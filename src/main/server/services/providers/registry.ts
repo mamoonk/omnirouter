@@ -1,0 +1,333 @@
+import type { ProviderConfig } from '@shared/types'
+
+export const PROVIDER_CONFIGS: ProviderConfig[] = [
+  {
+    name: 'gemini',
+    displayName: 'Gemini',
+    apiKeyEnv: 'GEMINI_API_KEY',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    models: [
+      { id: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash', contextWindow: 1_000_000, strengths: ['factual', 'long_doc', 'creative'] },
+      { id: 'gemini-2.5-flash-lite', displayName: 'Gemini 2.5 Flash Lite', contextWindow: 1_000_000, strengths: ['factual'] },
+      { id: 'imagen-3.0-generate-001', displayName: 'Imagen 3.0', contextWindow: 4000, strengths: ['creative'], capabilities: ['image'] }
+    ],
+    rpmLimit: 15,
+    tpmLimit: 1_000_000,
+    dailyTokenLimit: 1_500_000,
+    tier: 1,
+    adapter: 'native',
+    enabled: true
+  },
+  {
+    name: 'groq',
+    displayName: 'Groq',
+    apiKeyEnv: 'GROQ_API_KEY',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    models: [
+      { id: 'llama-3.3-70b-versatile', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'] },
+      { id: 'mixtral-8x7b-32768', displayName: 'Mixtral 8x7B', contextWindow: 32_768, strengths: ['factual', 'creative'] }
+    ],
+    rpmLimit: 30,
+    tpmLimit: 6_000,
+    dailyTokenLimit: 1_000_000,
+    tier: 1,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'mistral',
+    displayName: 'Mistral',
+    apiKeyEnv: 'MISTRAL_API_KEY',
+    baseUrl: 'https://api.mistral.ai/v1',
+    models: [
+      { id: 'mistral-small-latest', displayName: 'Mistral Small', contextWindow: 32_000, strengths: ['factual', 'code'] },
+      { id: 'open-mistral-7b', displayName: 'Open Mistral 7B', contextWindow: 8_000, strengths: ['factual'] }
+    ],
+    rpmLimit: 5,
+    tpmLimit: 500_000,
+    dailyTokenLimit: 500_000,
+    tier: 2,
+    adapter: 'native',
+    enabled: true
+  },
+  {
+    name: 'cohere',
+    displayName: 'Cohere',
+    apiKeyEnv: 'COHERE_API_KEY',
+    baseUrl: 'https://api.cohere.com/v2',
+    models: [
+      { id: 'command-r', displayName: 'Command R', contextWindow: 128_000, strengths: ['factual', 'long_doc'] },
+      { id: 'command-r-plus', displayName: 'Command R+', contextWindow: 128_000, strengths: ['factual', 'long_doc'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 100_000,
+    dailyTokenLimit: 500_000,
+    tier: 2,
+    adapter: 'native',
+    enabled: true
+  },
+  {
+    name: 'openai',
+    displayName: 'OpenAI',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    baseUrl: 'https://api.openai.com/v1',
+    models: [
+      { id: 'gpt-4o-mini', displayName: 'GPT-4o Mini', contextWindow: 128_000, strengths: ['code', 'creative', 'factual'] },
+      { id: 'gpt-4o', displayName: 'GPT-4o', contextWindow: 128_000, strengths: ['code', 'creative'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 200_000,
+    dailyTokenLimit: 200_000,
+    tier: 3,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'anthropic',
+    displayName: 'Anthropic',
+    apiKeyEnv: 'ANTHROPIC_API_KEY',
+    baseUrl: 'https://api.anthropic.com/v1',
+    models: [
+      { id: 'claude-3-haiku-20240307', displayName: 'Claude 3 Haiku', contextWindow: 200_000, strengths: ['code', 'factual'] },
+      { id: 'claude-3-5-sonnet-20241022', displayName: 'Claude 3.5 Sonnet', contextWindow: 200_000, strengths: ['code', 'creative'] }
+    ],
+    rpmLimit: 5,
+    tpmLimit: 100_000,
+    dailyTokenLimit: 100_000,
+    tier: 3,
+    adapter: 'native',
+    enabled: true
+  },
+  {
+    name: 'deepseek',
+    displayName: 'DeepSeek',
+    apiKeyEnv: 'DEEPSEEK_API_KEY',
+    baseUrl: 'https://api.deepseek.com/v1',
+    models: [
+      { id: 'deepseek-chat', displayName: 'DeepSeek V3', contextWindow: 128_000, strengths: ['code', 'factual'] }
+    ],
+    rpmLimit: 30,
+    tpmLimit: 500_000,
+    dailyTokenLimit: 500_000,
+    tier: 2,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'together',
+    displayName: 'Together AI',
+    apiKeyEnv: 'TOGETHER_API_KEY',
+    baseUrl: 'https://api.together.xyz/v1',
+    models: [
+      { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', displayName: 'Llama 3.1 8B', contextWindow: 131_072, strengths: ['factual', 'code'] },
+      { id: 'mistralai/Mixtral-8x22B-Instruct-v0.1', displayName: 'Mixtral 8x22B', contextWindow: 65_536, strengths: ['creative', 'factual'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 100_000,
+    dailyTokenLimit: 200_000,
+    tier: 2,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'fireworks',
+    displayName: 'Fireworks AI',
+    apiKeyEnv: 'FIREWORKS_API_KEY',
+    baseUrl: 'https://api.fireworks.ai/inference/v1',
+    models: [
+      { id: 'accounts/fireworks/models/llama-v3p1-8b-instruct', displayName: 'Llama 3.1 8B', contextWindow: 131_072, strengths: ['factual', 'code'] },
+      { id: 'accounts/fireworks/models/mixtral-8x7b-instruct', displayName: 'Mixtral 8x7B', contextWindow: 32_768, strengths: ['creative'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 100_000,
+    dailyTokenLimit: 200_000,
+    tier: 2,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'openrouter',
+    displayName: 'OpenRouter',
+    apiKeyEnv: 'OPENROUTER_API_KEY',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    models: [
+      { id: 'meta-llama/llama-3.3-70b-instruct', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'] },
+      { id: 'mistralai/mistral-small-3.1-24b-instruct', displayName: 'Mistral Small 3.1', contextWindow: 32_000, strengths: ['factual'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 100_000,
+    dailyTokenLimit: 100_000,
+    tier: 2,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'nvidia',
+    displayName: 'NVIDIA NIM',
+    apiKeyEnv: 'NVIDIA_API_KEY',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    models: [
+      { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', displayName: 'Nemotron 3 Super', contextWindow: 262_144, strengths: ['code', 'factual'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 200_000,
+    dailyTokenLimit: 500_000,
+    tier: 2,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'perplexity',
+    displayName: 'Perplexity',
+    apiKeyEnv: 'PERPLEXITY_API_KEY',
+    baseUrl: 'https://api.perplexity.ai',
+    models: [
+      { id: 'sonar-pro', displayName: 'Sonar Pro', contextWindow: 200_000, strengths: ['factual', 'creative'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 100_000,
+    dailyTokenLimit: 200_000,
+    tier: 2,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'xai',
+    displayName: 'xAI Grok',
+    apiKeyEnv: 'XAI_API_KEY',
+    baseUrl: 'https://api.x.ai/v1',
+    models: [
+      { id: 'grok-2-1212', displayName: 'Grok 2', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 100_000,
+    dailyTokenLimit: 100_000,
+    tier: 2,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'eden',
+    displayName: 'Eden AI',
+    apiKeyEnv: 'EDEN_API_KEY',
+    baseUrl: 'https://api.edenai.run/v2',
+    models: [
+      { id: 'openai/gpt-4o-mini', displayName: 'GPT-4o Mini (via Eden)', contextWindow: 128_000, strengths: ['code', 'creative'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 50_000,
+    dailyTokenLimit: 50_000,
+    tier: 2,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'siliconflow',
+    displayName: 'SiliconFlow',
+    apiKeyEnv: 'SILICONFLOW_API_KEY',
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    models: [
+      { id: 'Qwen/Qwen2.5-7B-Instruct', displayName: 'Qwen 2.5 7B', contextWindow: 32_768, strengths: ['factual', 'code'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 50_000,
+    dailyTokenLimit: 100_000,
+    tier: 2,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'cerebras',
+    displayName: 'Cerebras',
+    apiKeyEnv: 'CEREBRAS_API_KEY',
+    baseUrl: 'https://api.cerebras.ai/v1',
+    models: [
+      { id: 'llama-3.3-70b', displayName: 'Llama 3.3 70B', contextWindow: 128_000, strengths: ['factual', 'code'] }
+    ],
+    rpmLimit: 5,
+    tpmLimit: 30_000,
+    dailyTokenLimit: 1_000_000,
+    tier: 1,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'huggingface',
+    displayName: 'HuggingFace',
+    apiKeyEnv: 'HUGGINGFACE_API_KEY',
+    baseUrl: 'https://api-inference.huggingface.co/models',
+    models: [
+      { id: 'meta-llama/Llama-3.3-70B-Instruct', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'] },
+      { id: 'mistralai/Mistral-7B-Instruct-v0.3', displayName: 'Mistral 7B', contextWindow: 32_768, strengths: ['factual'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 50_000,
+    dailyTokenLimit: 100_000,
+    tier: 1,
+    adapter: 'native',
+    enabled: true
+  },
+  {
+    name: 'cloudflare',
+    displayName: 'Cloudflare',
+    apiKeyEnv: 'CLOUDFLARE_API_KEY',
+    baseUrl: 'https://api.cloudflare.com/client/v4/accounts',
+    models: [
+      { id: '@cf/meta/llama-3.3-70b-instruct-fp8', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 50_000,
+    dailyTokenLimit: 100_000,
+    tier: 1,
+    adapter: 'native',
+    enabled: true
+  },
+  {
+    name: 'dashscope',
+    displayName: 'DashScope (Qwen)',
+    apiKeyEnv: 'DASHSCOPE_API_KEY',
+    baseUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+    models: [
+      { id: 'qwen-plus', displayName: 'Qwen Plus', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'] },
+      { id: 'qwen-turbo', displayName: 'Qwen Turbo', contextWindow: 1_000_000, strengths: ['factual', 'long_doc'] }
+    ],
+    rpmLimit: 60,
+    tpmLimit: 500_000,
+    dailyTokenLimit: 500_000,
+    tier: 2,
+    adapter: 'openai-compatible',
+    enabled: true
+  },
+  {
+    name: 'ai21',
+    displayName: 'AI21 Labs',
+    apiKeyEnv: 'AI21_API_KEY',
+    baseUrl: 'https://api.ai21.com/studio/v1',
+    models: [
+      { id: 'jamba-1.5-mini', displayName: 'Jamba 1.5 Mini', contextWindow: 256_000, strengths: ['factual', 'creative'] },
+      { id: 'jamba-1.5-large', displayName: 'Jamba 1.5 Large', contextWindow: 256_000, strengths: ['code', 'creative'] }
+    ],
+    rpmLimit: 10,
+    tpmLimit: 100_000,
+    dailyTokenLimit: 200_000,
+    tier: 2,
+    adapter: 'native',
+    enabled: true
+  }
+]
+
+export function getProviderConfig(name: string): ProviderConfig | undefined {
+  return PROVIDER_CONFIGS.find((p) => p.name === name)
+}
+
+export function getEnabledProviders(): ProviderConfig[] {
+  return PROVIDER_CONFIGS.filter((p) => p.enabled)
+}
+
+export function getChatProviders(): ProviderConfig[] {
+  return PROVIDER_CONFIGS.filter((p) => p.enabled)
+}
+
+export function getImageCapableProviders(): ProviderConfig[] {
+  return PROVIDER_CONFIGS.filter((p) => p.enabled && p.models.some((m) => m.capabilities?.includes('image')))
+}
