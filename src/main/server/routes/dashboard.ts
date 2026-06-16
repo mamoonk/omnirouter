@@ -2,18 +2,20 @@ import { Router } from 'express'
 import { getQuotaStatus } from '../services/quota'
 import { getEnabledProviders } from '../services/providers/registry'
 import { getDb } from '../db/index'
+import type { AuthedRequest } from '../middleware/requireAuth'
 
 export const dashboardRouter = Router()
 
-dashboardRouter.get('/', (_req, res) => {
+dashboardRouter.get('/', (req: AuthedRequest, res) => {
   try {
+    const userId = req.userId!
     const providers = getEnabledProviders()
-    const quotaStatuses = getQuotaStatus(providers)
+    const quotaStatuses = getQuotaStatus(userId, providers)
 
     const d = getDb()
     const totalTokens = d.prepare(
-      "SELECT COALESCE(SUM(tokens_in + tokens_out), 0) as total FROM quota_log"
-    ).get() as { total: number }
+      "SELECT COALESCE(SUM(tokens_in + tokens_out), 0) as total FROM quota_log WHERE user_id = ?"
+    ).get(userId) as { total: number }
 
     const gpt4Rate = 0.01
     const gpt4MiniRate = 0.00015

@@ -7,10 +7,14 @@ export interface ProviderConfig {
   rpmLimit: number
   tpmLimit: number
   dailyTokenLimit: number
+  /** Some providers (e.g. Gemini's free tier) cap requests/day rather than tokens/day. */
+  dailyRequestLimit?: number
   tier: 1 | 2 | 3
   adapter: 'openai-compatible' | 'native'
   nativePackage?: string
   enabled: boolean
+  /** True for keyless providers (e.g. Pollinations.ai) — always treated as available. */
+  noKeyRequired?: boolean
 }
 
 export interface ModelDef {
@@ -120,6 +124,8 @@ export interface QuotaStatus {
   tpmLimit: number
   dailyTokensRemaining: number
   dailyTokenLimit: number
+  dailyRequestsRemaining?: number
+  dailyRequestLimit?: number
   degraded: boolean
   lastError?: string
 }

@@ -121,7 +121,35 @@ export function useChat(
             return updated
           })
         },
-        { signal: abort.signal, selfImprove: selfImproveRef.current || !!codeProjectRoot, debate: debateRef.current, attachments, onStep: upsertStep, projectId, codeProjectRoot, agentMode: agentModeRef.current }
+        {
+          signal: abort.signal,
+          selfImprove: selfImproveRef.current || !!codeProjectRoot,
+          debate: debateRef.current,
+          attachments,
+          onStep: upsertStep,
+          onDone: (response) => {
+            if (!response.imageData && !response.imageUrl) return
+            assistantContentRef.current = response.content
+            setMessages((prev) => {
+              const updated = [...prev]
+              const last = updated[updated.length - 1]
+              if (last.role === 'assistant') {
+                updated[updated.length - 1] = {
+                  ...last,
+                  content: response.content,
+                  provider: response.provider,
+                  model: response.model,
+                  imageUrl: response.imageUrl,
+                  imageData: response.imageData
+                }
+              }
+              return updated
+            })
+          },
+          projectId,
+          codeProjectRoot,
+          agentMode: agentModeRef.current
+        }
       )
 
       const wasSelfImprove = selfImproveRef.current || !!codeProjectRoot

@@ -6,8 +6,8 @@ export class AnthropicAdapter extends ProviderAdapter {
   readonly config: ProviderConfig
   private client: Anthropic
 
-  constructor(config: ProviderConfig) {
-    super()
+  constructor(config: ProviderConfig, apiKey?: string) {
+    super(apiKey)
     this.config = config
     this.client = new Anthropic({ apiKey: this.getApiKey() })
   }

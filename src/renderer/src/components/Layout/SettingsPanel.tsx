@@ -35,7 +35,16 @@ const PROVIDERS: ProviderInfo[] = [
   { label: 'Cloudflare', envKey: 'CLOUDFLARE_API_KEY', url: 'https://dash.cloudflare.com/profile/api-tokens' },
   { label: 'DashScope (Qwen)', envKey: 'DASHSCOPE_API_KEY', url: 'https://dashscope.console.aliyun.com/' },
   { label: 'AI21 Labs', envKey: 'AI21_API_KEY', url: 'https://www.ai21.com/studio' },
-  { label: 'Cerebras', envKey: 'CEREBRAS_API_KEY', url: 'https://inference.cerebras.ai/' }
+  { label: 'Cerebras', envKey: 'CEREBRAS_API_KEY', url: 'https://inference.cerebras.ai/' },
+  { label: 'SambaNova Cloud', envKey: 'SAMBANOVA_API_KEY', url: 'https://cloud.sambanova.ai/apis' },
+  { label: 'DeepInfra', envKey: 'DEEPINFRA_API_KEY', url: 'https://deepinfra.com/dash/api_keys' },
+  { label: 'Stability AI', envKey: 'STABILITY_API_KEY', url: 'https://platform.stability.ai/account/keys' },
+  { label: 'Replicate', envKey: 'REPLICATE_API_KEY', url: 'https://replicate.com/account/api-tokens' },
+  { label: 'Fal.ai', envKey: 'FALAI_API_KEY', url: 'https://fal.ai/dashboard/keys' },
+  { label: 'Volcengine (Doubao)', envKey: 'VOLCENGINE_API_KEY', url: 'https://console.volcengine.com/ark' },
+  { label: 'Zhipu AI (GLM)', envKey: 'ZHIPU_API_KEY', url: 'https://open.bigmodel.cn/usercenter/apikeys' },
+  { label: 'Baidu Qianfan (ERNIE)', envKey: 'BAIDU_API_KEY', url: 'https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application' },
+  { label: 'Moonshot AI (Kimi)', envKey: 'MOONSHOT_API_KEY', url: 'https://platform.moonshot.ai/console/api-keys' }
 ]
 
 type Tab = 'keys' | 'debate' | 'general'

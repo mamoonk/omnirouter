@@ -4,8 +4,8 @@ import type { CompletionRequest, CompletionResponse, ProviderConfig } from '@sha
 export class HuggingFaceAdapter extends ProviderAdapter {
   readonly config: ProviderConfig
 
-  constructor(config: ProviderConfig) {
-    super()
+  constructor(config: ProviderConfig, apiKey?: string) {
+    super(apiKey)
     this.config = config
   }
 

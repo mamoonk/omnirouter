@@ -7,6 +7,8 @@ interface Props {
 export function QuotaBar({ status }: Props) {
   const rpmPct = status.rpmLimit > 0 ? (status.rpmRemaining / status.rpmLimit) * 100 : 0
   const dailyPct = status.dailyTokenLimit > 0 ? (status.dailyTokensRemaining / status.dailyTokenLimit) * 100 : 0
+  const hasDailyRequestLimit = status.dailyRequestLimit !== undefined && status.dailyRequestsRemaining !== undefined
+  const dailyRequestPct = hasDailyRequestLimit ? (status.dailyRequestsRemaining! / status.dailyRequestLimit!) * 100 : 0
 
   const getColor = (pct: number) => {
     if (pct > 50) return 'bg-green-500'
@@ -49,6 +51,21 @@ export function QuotaBar({ status }: Props) {
             />
           </div>
         </div>
+
+        {hasDailyRequestLimit && (
+          <div>
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span>Daily requests</span>
+              <span>{status.dailyRequestsRemaining} / {status.dailyRequestLimit}</span>
+            </div>
+            <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${getColor(dailyRequestPct)}`}
+                style={{ width: `${dailyRequestPct}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -16,7 +16,8 @@ import {
   ChevronDown,
   ChevronRight,
   Settings,
-  BarChart3
+  BarChart3,
+  LogOut
 } from 'lucide-react'
 import { ApiClient } from '../../lib/api'
 import type { Conversation, Project } from '@shared/types'
@@ -486,6 +487,18 @@ export function Sidebar({
           <Settings size={16} />
           {!collapsed && 'Settings'}
         </button>
+        {!window.electronAPI && (
+          <button
+            onClick={() => {
+              fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).then(() => window.location.reload())
+            }}
+            title="Log out"
+            className={`flex items-center gap-2 rounded-lg text-sm font-medium transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 ${collapsed ? 'p-2' : 'w-full px-3 py-2'}`}
+          >
+            <LogOut size={16} />
+            {!collapsed && 'Log out'}
+          </button>
+        )}
       </div>
     </div>
   )

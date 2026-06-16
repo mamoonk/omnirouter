@@ -6,8 +6,8 @@ export class CohereAdapter extends ProviderAdapter {
   readonly config: ProviderConfig
   private client: CohereClient
 
-  constructor(config: ProviderConfig) {
-    super()
+  constructor(config: ProviderConfig, apiKey?: string) {
+    super(apiKey)
     this.config = config
     this.client = new CohereClient({ token: this.getApiKey() })
   }

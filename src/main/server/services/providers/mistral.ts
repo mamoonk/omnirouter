@@ -6,8 +6,8 @@ export class MistralAdapter extends ProviderAdapter {
   readonly config: ProviderConfig
   private client: Mistral
 
-  constructor(config: ProviderConfig) {
-    super()
+  constructor(config: ProviderConfig, apiKey?: string) {
+    super(apiKey)
     this.config = config
     this.client = new Mistral({ apiKey: this.getApiKey() })
   }

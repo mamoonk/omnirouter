@@ -4,11 +4,18 @@ export type { ProviderConfig, ModelDef }
 
 export abstract class ProviderAdapter {
   abstract readonly config: ProviderConfig
+  /** Explicitly resolved key for the current request's user (web/multi-tenant). */
+  protected resolvedApiKey?: string
+
+  constructor(resolvedApiKey?: string) {
+    this.resolvedApiKey = resolvedApiKey
+  }
 
   abstract complete(req: CompletionRequest): Promise<CompletionResponse>
 
+  /** Falls back to process.env for the desktop/single-user (Electron) flow. */
   getApiKey(): string {
-    const key = process.env[this.config.apiKeyEnv]
+    const key = this.resolvedApiKey || process.env[this.config.apiKeyEnv]
     if (!key) throw new Error(`Missing API key: ${this.config.apiKeyEnv}`)
     return key
   }

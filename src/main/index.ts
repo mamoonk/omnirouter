@@ -11,7 +11,7 @@ let mainWindow: BrowserWindow | null = null
 let cachedPort = 3456
 
 async function createWindow() {
-  await initDatabase()
+  await initDatabase(join(app.getPath('userData'), 'myrouter.db'))
 
   const serverPort = await startServer()
   cachedPort = serverPort

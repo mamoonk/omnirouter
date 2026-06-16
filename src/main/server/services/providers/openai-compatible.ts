@@ -9,8 +9,8 @@ export class OpenAICompatibleAdapter extends ProviderAdapter {
   readonly config: ProviderConfig
   private client: OpenAI
 
-  constructor(config: ProviderConfig) {
-    super()
+  constructor(config: ProviderConfig, apiKey?: string) {
+    super(apiKey)
     this.config = config
     this.client = new OpenAI({
       apiKey: this.getApiKey(),
@@ -33,8 +33,48 @@ export class OpenAICompatibleAdapter extends ProviderAdapter {
   }
 
   async complete(req: CompletionRequest): Promise<CompletionResponse> {
-    const start = Date.now()
     const model = req.model || this.config.models[0].id
+    const modelDef = this.config.models.find((m) => m.id === model)
+
+    if (model.startsWith('dall-e') || model.startsWith('gpt-image') || modelDef?.capabilities?.includes('image')) {
+      return this.generateImage(req, model)
+    }
+
+    return this.generateText(req, model)
+  }
+
+  private async generateImage(req: CompletionRequest, model: string): Promise<CompletionResponse> {
+    const start = Date.now()
+    const prompt = req.messages.map((m) => m.content).join('\n')
+
+    try {
+      const response = await this.client.images.generate({
+        model,
+        prompt,
+        n: 1
+      })
+
+      const image = response.data?.[0]
+
+      return {
+        content: `Generated image: ${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}`,
+        model,
+        provider: this.config.name,
+        tokensIn: prompt.length,
+        tokensOut: 0,
+        finishReason: 'stop',
+        latencyMs: Date.now() - start,
+        imageData: image?.b64_json || undefined,
+        imageUrl: image?.url || undefined
+      }
+    } catch (err) {
+      const { status, message } = normalizeError(err)
+      throw Object.assign(new Error(message), { status })
+    }
+  }
+
+  private async generateText(req: CompletionRequest, model: string): Promise<CompletionResponse> {
+    const start = Date.now()
 
     try {
       const response = await this.client.chat.completions.create({

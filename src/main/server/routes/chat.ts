@@ -1,17 +1,34 @@
 import { Router } from 'express'
 import { v4 as uuid } from 'uuid'
 import { routeRequest } from '../services/router'
-import { createConversation, getConversations, getMessages, saveMessage, deleteConversation, deleteAllConversations, deleteConversationsByIds } from '../db/index'
+import { createConversation, getConversations, getMessages, saveMessage, deleteConversation, deleteAllConversations, deleteConversationsByIds, conversationBelongsToUser, conversationExists } from '../db/index'
 import { getSetting } from '../db/index'
 import { buildSystemPrompt } from '../services/codebase'
 import { getTreeNodes, buildProjectSystemPrompt } from '../services/projectAgent'
 import type { ActivityStep, Attachment, DebateData, RoutingStrategy, SSEMessage } from '@shared/types'
 import { runDebate } from '../services/debate'
+import type { AuthedRequest } from '../middleware/requireAuth'
+import { LOCAL_USER_ID } from '../db/index'
 
 export const chatRouter = Router()
 
-chatRouter.post('/stream', async (req, res) => {
-  const { conversationId, content, selfImprove, debate, attachments, projectId, codeProjectRoot, agentMode } = req.body
+chatRouter.post('/stream', async (req: AuthedRequest, res) => {
+  const userId = req.userId!
+  // Agent-mode/self-improve reads and writes files on the local machine via
+  // Electron IPC and the /api/self-improve and /api/code routes — those routes
+  // aren't mounted outside the desktop ('local') flow, so ignore the flags here too.
+  const isLocal = userId === LOCAL_USER_ID
+  const { conversationId, content, debate, attachments, projectId, agentMode } = req.body
+  const selfImprove = isLocal && req.body.selfImprove
+  const codeProjectRoot = isLocal ? req.body.codeProjectRoot : undefined
+
+  // Only block on conversations that already exist under a *different* user — a brand
+  // new conversation's id is generated client-side and won't exist in the DB yet,
+  // since createConversation() below is what actually creates the row.
+  if (conversationId && conversationExists(conversationId) && !conversationBelongsToUser(userId, conversationId)) {
+    res.status(403).json({ error: 'Conversation does not belong to this user' })
+    return
+  }
 
   if (!content && (!attachments || attachments.length === 0)) {
     res.status(400).json({ error: 'Content or attachments is required' })
@@ -30,12 +47,12 @@ chatRouter.post('/stream', async (req, res) => {
     res.write(`data: ${JSON.stringify({ type: 'step', data: step } as SSEMessage)}\n\n`)
   }
 
-  const cacheEnabled = getSetting('cacheEnabled') !== 'false'
-  const compressionEnabled = getSetting('compressionEnabled') !== 'false'
-  const tokenOptimization = getSetting('tokenOptimization') !== 'false'
-  const tokenOptimizationThreshold = parseInt(getSetting('tokenOptimizationThreshold') || '70', 10)
-  const routingStrategy = (getSetting('routingStrategy') || 'smart') as RoutingStrategy
-  const routeOptions = { cacheEnabled, compressionEnabled, tokenOptimization, tokenOptimizationThreshold, preferCode: selfImprove, routingStrategy, onStep: sendStep }
+  const cacheEnabled = getSetting(userId, 'cacheEnabled') !== 'false'
+  const compressionEnabled = getSetting(userId, 'compressionEnabled') !== 'false'
+  const tokenOptimization = getSetting(userId, 'tokenOptimization') !== 'false'
+  const tokenOptimizationThreshold = parseInt(getSetting(userId, 'tokenOptimizationThreshold') || '70', 10)
+  const routingStrategy = (getSetting(userId, 'routingStrategy') || 'smart') as RoutingStrategy
+  const routeOptions = { userId, cacheEnabled, compressionEnabled, tokenOptimization, tokenOptimizationThreshold, preferCode: selfImprove, routingStrategy, onStep: sendStep }
 
   try {
     const msgs = conversationId
@@ -60,7 +77,7 @@ chatRouter.post('/stream', async (req, res) => {
       }
     }
 
-    const debateRounds = parseInt(getSetting('debateRounds') || '1', 10)
+    const debateRounds = parseInt(getSetting(userId, 'debateRounds') || '1', 10)
 
     const userAttachments = attachments as Attachment[] | undefined
 
@@ -69,12 +86,12 @@ chatRouter.post('/stream', async (req, res) => {
 
       {
         const title = content.slice(0, 50) + (content.length > 50 ? '...' : '')
-        createConversation(cid, title, projectId)
+        createConversation(userId, cid, title, projectId)
       }
       saveMessage(cid, 'user', content, undefined, undefined, undefined, undefined, undefined, undefined, JSON.stringify(attachments || []))
 
       try {
-        const debateData = await runDebate(msgs, debateRounds, sendStep)
+        const debateData = await runDebate(userId, msgs, debateRounds, sendStep)
 
         const finalAnswer = debateData.rounds[debateData.rounds.length - 1]?.content || ''
         const allErrors = debateData.rounds.every((r) => r.content.startsWith('['))
@@ -118,7 +135,7 @@ chatRouter.post('/stream', async (req, res) => {
 
     {
       const title = content.slice(0, 50) + (content.length > 50 ? '...' : '')
-      createConversation(cid, title, projectId)
+      createConversation(userId, cid, title, projectId)
     }
     saveMessage(cid, 'user', content, undefined, undefined, undefined, undefined, undefined, undefined, JSON.stringify(attachments || []))
 
@@ -162,48 +179,53 @@ chatRouter.post('/stream', async (req, res) => {
   res.end()
 })
 
-chatRouter.get('/conversations', async (req, res) => {
+chatRouter.get('/conversations', async (req: AuthedRequest, res) => {
   try {
     const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : undefined
-    const conversations = getConversations(projectId)
+    const conversations = getConversations(req.userId!, projectId)
     res.json(conversations)
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
 })
 
-chatRouter.delete('/conversations', async (req, res) => {
+chatRouter.delete('/conversations', async (req: AuthedRequest, res) => {
   try {
     const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : undefined
-    deleteAllConversations(projectId)
+    deleteAllConversations(req.userId!, projectId)
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
 })
 
-chatRouter.post('/conversations/delete', async (req, res) => {
+chatRouter.post('/conversations/delete', async (req: AuthedRequest, res) => {
   try {
     const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter((x: unknown) => typeof x === 'string') : []
-    deleteConversationsByIds(ids)
+    deleteConversationsByIds(req.userId!, ids)
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
 })
 
-chatRouter.get('/conversations/:id/messages', async (req, res) => {
+chatRouter.get('/conversations/:id/messages', async (req: AuthedRequest, res) => {
   try {
-    const messages = getMessages(req.params.id)
+    const id = String(req.params.id)
+    if (!conversationBelongsToUser(req.userId!, id)) {
+      res.status(403).json({ error: 'Conversation does not belong to this user' })
+      return
+    }
+    const messages = getMessages(id)
     res.json(messages)
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
 })
 
-chatRouter.delete('/conversations/:id', async (req, res) => {
+chatRouter.delete('/conversations/:id', async (req: AuthedRequest, res) => {
   try {
-    deleteConversation(req.params.id)
+    deleteConversation(req.userId!, String(req.params.id))
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

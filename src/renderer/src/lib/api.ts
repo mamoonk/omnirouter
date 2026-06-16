@@ -2,6 +2,7 @@ import type {
   ActivityStep,
   AgentMode,
   Attachment,
+  CompletionResponse,
   Conversation,
   DebateData,
   Message,
@@ -30,16 +31,25 @@ export class ApiClient {
   private baseUrl: string
 
   constructor(port: number) {
-    this.baseUrl = `http://localhost:${port}`
+    // Under Electron, the renderer is loaded from a file:// or dev-server origin
+    // and must reach the embedded server via its OS-assigned localhost port. In
+    // the browser-hosted web build there is no electronAPI/port discovery — the
+    // server serves the same origin the page was loaded from, so requests are relative.
+    this.baseUrl = typeof window !== 'undefined' && window.electronAPI ? `http://localhost:${port}` : ''
+  }
+
+  /** Sends the session cookie on every request — required for the multi-tenant web build. */
+  private request(url: string, init?: RequestInit): Promise<Response> {
+    return fetch(url, { ...init, credentials: 'include' })
   }
 
   async sendChat(
     conversationId: string,
     content: string,
     onToken: (token: string, provider?: string, model?: string, debate?: DebateData) => void,
-    options?: { signal?: AbortSignal; selfImprove?: boolean; debate?: boolean; attachments?: Attachment[]; onStep?: (step: ActivityStep) => void; projectId?: string | null; codeProjectRoot?: string | null; agentMode?: AgentMode }
+    options?: { signal?: AbortSignal; selfImprove?: boolean; debate?: boolean; attachments?: Attachment[]; onStep?: (step: ActivityStep) => void; onDone?: (response: CompletionResponse) => void; projectId?: string | null; codeProjectRoot?: string | null; agentMode?: AgentMode }
   ): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/api/chat/stream`, {
+    const res = await this.request(`${this.baseUrl}/api/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conversationId, content, selfImprove: options?.selfImprove || false, debate: options?.debate || false, attachments: options?.attachments, projectId: options?.projectId ?? null, codeProjectRoot: options?.codeProjectRoot ?? null, agentMode: options?.agentMode ?? 'generate' }),
@@ -81,7 +91,13 @@ export class ApiClient {
           } else if (type === 'error') {
             throw new Error(data)
           } else if (type === 'done') {
-            // stream complete
+            // For image responses the server skips token streaming entirely and puts
+            // the full CompletionResponse (with imageUrl/imageData) only in this event.
+            try {
+              options?.onDone?.(JSON.parse(data) as CompletionResponse)
+            } catch {
+              // malformed done payload, ignore
+            }
           }
         }
       }
@@ -90,19 +106,19 @@ export class ApiClient {
 
   async getConversations(projectId?: string | null): Promise<Conversation[]> {
     const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''
-    const res = await fetch(`${this.baseUrl}/api/chat/conversations${qs}`)
+    const res = await this.request(`${this.baseUrl}/api/chat/conversations${qs}`)
     return res.json()
   }
 
   async deleteAllConversations(projectId?: string | null): Promise<void> {
     const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''
-    await fetch(`${this.baseUrl}/api/chat/conversations${qs}`, { method: 'DELETE' })
+    await this.request(`${this.baseUrl}/api/chat/conversations${qs}`, { method: 'DELETE' })
   }
 
   async deleteConversations(ids: string[]): Promise<void> {
     if (ids.length === 0) return
     try {
-      const res = await fetch(`${this.baseUrl}/api/chat/conversations/delete`, {
+      const res = await this.request(`${this.baseUrl}/api/chat/conversations/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids })
@@ -117,12 +133,12 @@ export class ApiClient {
   }
 
   async getProjects(): Promise<Project[]> {
-    const res = await fetch(`${this.baseUrl}/api/projects`)
+    const res = await this.request(`${this.baseUrl}/api/projects`)
     return res.json()
   }
 
   async createProject(name: string): Promise<{ id: string; name: string }> {
-    const res = await fetch(`${this.baseUrl}/api/projects`, {
+    const res = await this.request(`${this.baseUrl}/api/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
@@ -134,7 +150,7 @@ export class ApiClient {
   }
 
   async renameProject(id: string, name: string): Promise<void> {
-    await fetch(`${this.baseUrl}/api/projects/${id}`, {
+    await this.request(`${this.baseUrl}/api/projects/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
@@ -142,11 +158,11 @@ export class ApiClient {
   }
 
   async deleteProject(id: string): Promise<void> {
-    await fetch(`${this.baseUrl}/api/projects/${id}`, { method: 'DELETE' })
+    await this.request(`${this.baseUrl}/api/projects/${id}`, { method: 'DELETE' })
   }
 
   async getMessages(conversationId: string): Promise<Message[]> {
-    const res = await fetch(`${this.baseUrl}/api/chat/conversations/${conversationId}/messages`)
+    const res = await this.request(`${this.baseUrl}/api/chat/conversations/${conversationId}/messages`)
     const rows = (await res.json()) as Array<Record<string, unknown>>
     // `attachments` is persisted as a JSON string; parse it back into an array so
     // the UI never tries to call array methods on a raw string (which crashes render).
@@ -176,31 +192,31 @@ export class ApiClient {
     providersAvailable: number
     modelsAvailable: number
   }> {
-    const res = await fetch(`${this.baseUrl}/api/status`)
+    const res = await this.request(`${this.baseUrl}/api/status`)
     return res.json()
   }
 
   async deleteConversation(conversationId: string): Promise<void> {
-    await fetch(`${this.baseUrl}/api/chat/conversations/${conversationId}`, { method: 'DELETE' })
+    await this.request(`${this.baseUrl}/api/chat/conversations/${conversationId}`, { method: 'DELETE' })
   }
 
   async getQuotaStatus(): Promise<QuotaStatus[]> {
-    const res = await fetch(`${this.baseUrl}/api/quota`)
+    const res = await this.request(`${this.baseUrl}/api/quota`)
     return res.json()
   }
 
   async getDashboard(): Promise<any> {
-    const res = await fetch(`${this.baseUrl}/api/dashboard`)
+    const res = await this.request(`${this.baseUrl}/api/dashboard`)
     return res.json()
   }
 
   async getSettings(): Promise<Settings> {
-    const res = await fetch(`${this.baseUrl}/api/settings`)
+    const res = await this.request(`${this.baseUrl}/api/settings`)
     return res.json()
   }
 
   async updateSettings(settings: Partial<Settings>): Promise<Settings> {
-    const res = await fetch(`${this.baseUrl}/api/settings`, {
+    const res = await this.request(`${this.baseUrl}/api/settings`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
@@ -209,12 +225,12 @@ export class ApiClient {
   }
 
   async getApiKeys(): Promise<Record<string, boolean>> {
-    const res = await fetch(`${this.baseUrl}/api/settings/keys`)
+    const res = await this.request(`${this.baseUrl}/api/settings/keys`)
     return res.json()
   }
 
   async saveApiKeys(keys: Record<string, string>): Promise<Record<string, boolean>> {
-    const res = await fetch(`${this.baseUrl}/api/settings/keys`, {
+    const res = await this.request(`${this.baseUrl}/api/settings/keys`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(keys)
@@ -224,14 +240,14 @@ export class ApiClient {
 
   async applyEdits(edits: Array<{ path: string; content: string }>, projectRoot?: string | null): Promise<{ success: boolean; results: Array<{ path: string; status: string; error?: string }> }> {
     if (projectRoot) {
-      const res = await fetch(`${this.baseUrl}/api/code/apply`, {
+      const res = await this.request(`${this.baseUrl}/api/code/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectRoot, edits })
       })
       return res.json()
     }
-    const res = await fetch(`${this.baseUrl}/api/self-improve/apply`, {
+    const res = await this.request(`${this.baseUrl}/api/self-improve/apply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ edits })
@@ -240,13 +256,13 @@ export class ApiClient {
   }
 
   async getCodeTree(root: string): Promise<TreeNode[]> {
-    const res = await fetch(`${this.baseUrl}/api/code/tree?root=${encodeURIComponent(root)}`)
+    const res = await this.request(`${this.baseUrl}/api/code/tree?root=${encodeURIComponent(root)}`)
     const data = await res.json()
     return data.nodes as TreeNode[]
   }
 
   async lintProject(projectRoot: string): Promise<{ errors: string[]; warnings: string[]; raw: string }> {
-    const res = await fetch(`${this.baseUrl}/api/code/lint`, {
+    const res = await this.request(`${this.baseUrl}/api/code/lint`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projectRoot })

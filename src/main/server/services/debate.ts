@@ -3,6 +3,7 @@ import { getChatProviders, getProviderConfig } from './providers/registry'
 import { classifyIntent, getIntentScores } from './classifier'
 import { markDegraded, recordUsage } from './quota'
 import { getSetting } from '../db/index'
+import { resolveApiKey, hasApiKey } from './apiKeys'
 import type { Message, DebateData, DebateRound, ActivityStep } from '@shared/types'
 import type { ProviderConfig } from '@shared/types'
 
@@ -18,19 +19,19 @@ const REFINER_PROMPT = `You are improving your previous answer based on reviewer
 Provide a refined, corrected version of your answer that addresses all the feedback.
 Make it clear, accurate, and comprehensive. Include the full improved answer.`
 
-function getConfiguredProvider(name?: string): ProviderConfig | null {
+function getConfiguredProvider(userId: string, name?: string): ProviderConfig | null {
   if (!name) return null
   const cfg = getProviderConfig(name)
-  if (cfg && process.env[cfg.apiKeyEnv]) return cfg
+  if (cfg && hasApiKey(userId, cfg)) return cfg
   return null
 }
 
-async function pickProviders(userMessages: Message[]): Promise<{ primary: ProviderConfig; critic: ProviderConfig }> {
-  const primaryName = getSetting('debatePrimaryProvider')
-  const criticName = getSetting('debateCriticProvider')
+async function pickProviders(userId: string, userMessages: Message[]): Promise<{ primary: ProviderConfig; critic: ProviderConfig }> {
+  const primaryName = getSetting(userId, 'debatePrimaryProvider')
+  const criticName = getSetting(userId, 'debateCriticProvider')
 
-  const explicitPrimary = getConfiguredProvider(primaryName || undefined)
-  const explicitCritic = getConfiguredProvider(criticName || undefined)
+  const explicitPrimary = getConfiguredProvider(userId, primaryName || undefined)
+  const explicitCritic = getConfiguredProvider(userId, criticName || undefined)
 
   if (explicitPrimary && explicitCritic) {
     return { primary: explicitPrimary, critic: explicitCritic }
@@ -38,7 +39,7 @@ async function pickProviders(userMessages: Message[]): Promise<{ primary: Provid
 
   const intent = classifyIntent(userMessages)
   const intentScores = getIntentScores(intent)
-  const providers = getChatProviders().filter((p) => process.env[p.apiKeyEnv])
+  const providers = getChatProviders().filter((p) => hasApiKey(userId, p))
 
   const scored = providers
     .map((p) => ({ provider: p, score: intentScores[p.name] || 0.3 }))
@@ -54,6 +55,7 @@ async function pickProviders(userMessages: Message[]): Promise<{ primary: Provid
 }
 
 export async function runDebate(
+  userId: string,
   userMessages: Message[],
   rounds: number,
   onStep?: (step: ActivityStep) => void
@@ -63,10 +65,10 @@ export async function runDebate(
     onStep?.({ id: `d${++stepN}`, kind: 'debate', label, detail, status })
 
   emitStep('Selecting debate participants', 'Choosing a primary author and a critic')
-  const { primary, critic } = await pickProviders(userMessages)
+  const { primary, critic } = await pickProviders(userId, userMessages)
   emitStep('Debate participants chosen', `${primary.displayName} answers · ${critic.displayName} reviews`)
-  const primaryAdapter = createAdapter(primary)
-  const criticAdapter = createAdapter(critic)
+  const primaryAdapter = createAdapter(primary, resolveApiKey(userId, primary.apiKeyEnv))
+  const criticAdapter = createAdapter(critic, resolveApiKey(userId, critic.apiKeyEnv))
 
   const primaryModel = primary.models[0]?.id || ''
   const criticModel = critic.models[0]?.id || ''
@@ -87,10 +89,10 @@ async function callWithRetry(
 ): Promise<string> {
   try {
     const res = await adapter.complete({ model, messages, maxTokens })
-    recordUsage(providerName, res.tokensIn || 0, res.tokensOut || 0)
+    recordUsage(userId, providerName, res.tokensIn || 0, res.tokensOut || 0)
     return res.content
   } catch (err: any) {
-    markDegraded(providerName, err.message || 'Error', 30_000)
+    markDegraded(userId, providerName, err.message || 'Error', 30_000)
     if (err.status === 429 && attempt < 3) {
       const wait = attempt * 2000
       await delay(wait)

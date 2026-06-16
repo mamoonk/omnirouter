@@ -6,8 +6,8 @@ export class GeminiAdapter extends ProviderAdapter {
   readonly config: ProviderConfig
   private client: GoogleGenerativeAI
 
-  constructor(config: ProviderConfig) {
-    super()
+  constructor(config: ProviderConfig, apiKey?: string) {
+    super(apiKey)
     this.config = config
     this.client = new GoogleGenerativeAI(this.getApiKey())
   }
@@ -71,12 +71,11 @@ export class GeminiAdapter extends ProviderAdapter {
     const key = this.getApiKey()
 
     const response = await fetch(
-      `${this.config.baseUrl}/models/${modelId}:predict`,
+      `${this.config.baseUrl}/models/${modelId}:predict?key=${key}`,
       {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${key}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           instances: [{ prompt }],

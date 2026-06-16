@@ -1,4 +1,4 @@
-import type { CompletionResponse, Message, RouterScore, ProviderConfig, RoutingStrategy, ActivityStep } from '@shared/types'
+import type { CompletionResponse, Message, RouterScore, ProviderConfig, RoutingStrategy, ActivityStep, QuotaStatus } from '@shared/types'
 import type { IntentCategory } from '@shared/types'
 import { classifyIntent, getIntentScores } from './classifier'
 import { getQuotaStatus, markDegraded, recordUsage, getBestAvailableModel } from './quota'
@@ -7,8 +7,10 @@ import { compressMessages } from './compressor'
 import { optimizeMessages } from './optimizer'
 import { createAdapter } from './providers/factory'
 import { getEnabledProviders, getChatProviders, getImageCapableProviders } from './providers/registry'
+import { resolveApiKey, hasApiKey } from './apiKeys'
 
 export interface RouterOptions {
+  userId: string
   cacheEnabled: boolean
   compressionEnabled: boolean
   tokenOptimization?: boolean
@@ -84,7 +86,7 @@ export async function routeRequest(
   }
 
   const providers = getChatProviders()
-  const availableProviders = providers.filter((p) => process.env[p.apiKeyEnv])
+  const availableProviders = providers.filter((p) => hasApiKey(options.userId, p))
 
   if (availableProviders.length === 0) {
     step.log('error', 'No providers available', 'No API keys are configured', 'fail')
@@ -108,7 +110,7 @@ export async function routeRequest(
 
   // Determine context window from the top-scoring available provider so the
   // optimizer can set an accurate token budget before we make any API call.
-  const previewScores = await scoreProviders(availableProviders, intent, options.routingStrategy)
+  const previewScores = await scoreProviders(options.userId, availableProviders, intent, options.routingStrategy)
   previewScores.sort((a, b) => b.score - a.score)
   const topProvider = availableProviders.find((p) => p.name === previewScores[0]?.provider)
   const topModel = topProvider ? getBestAvailableModel(topProvider, intent) : undefined
@@ -152,7 +154,8 @@ export async function routeRequest(
     const callStep = step.start('provider', `Calling ${config.displayName}`, model)
 
     try {
-      const adapter = createAdapter(config)
+      const apiKey = resolveApiKey(options.userId, config.apiKeyEnv)
+      const adapter = createAdapter(config, apiKey)
 
       const response = await adapter.complete({
         model,
@@ -160,7 +163,7 @@ export async function routeRequest(
         maxTokens: 4096
       })
 
-      recordUsage(config.name, response.tokensIn, response.tokensOut)
+      recordUsage(options.userId, config.name, response.tokensIn, response.tokensOut)
       callStep.done(`${config.displayName} answered · ${response.tokensIn}+${response.tokensOut} tokens · ${response.latencyMs}ms`)
 
       if (options.cacheEnabled) {
@@ -178,9 +181,9 @@ export async function routeRequest(
       errors.push(`${score.provider}: ${reason}`)
       callStep.fail(`${config.displayName} failed (${reason}) — failing over`)
       if (err.status === 429) {
-        markDegraded(score.provider, 'Rate limited')
+        markDegraded(options.userId, score.provider, 'Rate limited')
       } else {
-        markDegraded(score.provider, err.message || 'Error', 60_000)
+        markDegraded(options.userId, score.provider, err.message || 'Error', 60_000)
       }
     }
   }
@@ -209,7 +212,7 @@ async function handleImageRequest(
 ): Promise<RouterResult> {
   step.log('route', 'Routing to image generation', 'Request looks like an image prompt')
   const providers = getImageCapableProviders()
-  const availableProviders = providers.filter((p) => process.env[p.apiKeyEnv])
+  const availableProviders = providers.filter((p) => hasApiKey(_options.userId, p))
 
   if (availableProviders.length === 0) {
     step.log('error', 'No image providers', 'Add a Gemini API key (Imagen) in Settings', 'fail')
@@ -236,12 +239,17 @@ async function handleImageRequest(
     const model = imageModel?.id || config.models[0]?.id || ''
     const imgStep = step.start('provider', `Generating image with ${config.displayName}`, model)
     try {
-      const adapter = createAdapter(config)
+      const apiKey = resolveApiKey(_options.userId, config.apiKeyEnv)
+      const adapter = createAdapter(config, apiKey)
 
       const response = await adapter.complete({
         model,
         messages
       })
+
+      if (!response.imageData && !response.imageUrl) {
+        throw new Error('Provider responded without image data')
+      }
 
       imgStep.done(`${config.displayName} returned an image`)
       return {
@@ -276,13 +284,26 @@ let roundRobinIndex = 0
 
 const FASTEST_PROVIDERS = ['gemini', 'groq', 'cerebras', 'deepseek', 'together', 'openai']
 
+/**
+ * Combines the daily-token and daily-request budgets into one weight — some providers
+ * (e.g. Gemini's free tier) cap requests/day rather than tokens/day, so whichever
+ * budget is closer to exhausted should dominate the score.
+ */
+function dailyWeightFor(qs: QuotaStatus): number {
+  const tokenWeight = qs.dailyTokenLimit > 0 ? qs.dailyTokensRemaining / qs.dailyTokenLimit : 1
+  if (qs.dailyRequestLimit === undefined || qs.dailyRequestsRemaining === undefined) return tokenWeight
+  const requestWeight = qs.dailyRequestLimit > 0 ? qs.dailyRequestsRemaining / qs.dailyRequestLimit : 1
+  return Math.min(tokenWeight, requestWeight)
+}
+
 async function scoreProviders(
+  userId: string,
   providers: ProviderConfig[],
   intent: IntentCategory,
   strategy?: RoutingStrategy
 ): Promise<RouterScore[]> {
   const intentScores = getIntentScores(intent)
-  const quotaStatuses = getQuotaStatus(providers)
+  const quotaStatuses = getQuotaStatus(userId, providers)
 
   return providers.map((config, i) => {
     const qs = quotaStatuses.find((q) => q.provider === config.name)!
@@ -293,7 +314,7 @@ async function scoreProviders(
       case 'cheapest': {
         const tierScore = config.tier === 1 ? 1.0 : config.tier === 2 ? 0.5 : 0.1
         const rpmWeight = qs.rpmLimit > 0 ? qs.rpmRemaining / qs.rpmLimit : 0
-        const dailyWeight = qs.dailyTokenLimit > 0 ? qs.dailyTokensRemaining / qs.dailyTokenLimit : 0
+        const dailyWeight = dailyWeightFor(qs)
         const failurePenalty = qs.degraded ? 0 : 1
         score = tierScore * 0.5 + rpmWeight * 0.2 + dailyWeight * 0.2 + failurePenalty * 0.1
         factors.intentWeight = tierScore
@@ -305,7 +326,7 @@ async function scoreProviders(
       case 'fastest': {
         const speedScore = FASTEST_PROVIDERS.indexOf(config.name) >= 0 ? 1.0 : 0.3
         const rpmWeight = qs.rpmLimit > 0 ? qs.rpmRemaining / qs.rpmLimit : 0
-        const dailyWeight = qs.dailyTokenLimit > 0 ? qs.dailyTokensRemaining / qs.dailyTokenLimit : 0
+        const dailyWeight = dailyWeightFor(qs)
         const failurePenalty = qs.degraded ? 0 : 1
         score = speedScore * 0.5 + rpmWeight * 0.2 + dailyWeight * 0.2 + failurePenalty * 0.1
         factors.intentWeight = speedScore
@@ -316,7 +337,7 @@ async function scoreProviders(
       }
       case 'roundrobin': {
         const rpmWeight = qs.rpmLimit > 0 ? qs.rpmRemaining / qs.rpmLimit : 0
-        const dailyWeight = qs.dailyTokenLimit > 0 ? qs.dailyTokensRemaining / qs.dailyTokenLimit : 0
+        const dailyWeight = dailyWeightFor(qs)
         const failurePenalty = qs.degraded ? 0 : 1
         const rr = ((i + roundRobinIndex) % providers.length) === 0 ? 1 : 0
         score = rr * 0.6 + rpmWeight * 0.15 + dailyWeight * 0.15 + failurePenalty * 0.1
@@ -329,7 +350,7 @@ async function scoreProviders(
       default: {
         const intentWeight = intentScores[config.name] || 0.3
         const rpmWeight = qs.rpmLimit > 0 ? qs.rpmRemaining / qs.rpmLimit : 0
-        const dailyWeight = qs.dailyTokenLimit > 0 ? qs.dailyTokensRemaining / qs.dailyTokenLimit : 0
+        const dailyWeight = dailyWeightFor(qs)
         const failurePenalty = qs.degraded ? 0 : 1
         score = intentWeight * 0.4 + rpmWeight * 0.25 + dailyWeight * 0.25 + failurePenalty * 0.1
         factors.intentWeight = intentWeight

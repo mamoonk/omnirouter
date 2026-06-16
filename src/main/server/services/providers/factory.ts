@@ -7,12 +7,23 @@ import { AnthropicAdapter } from './anthropic'
 import { HuggingFaceAdapter } from './huggingface'
 import { CloudflareAdapter } from './cloudflare'
 import { AI21Adapter } from './ai21'
+import { StabilityAdapter } from './stability'
+import { ReplicateAdapter } from './replicate'
+import { FalAiAdapter } from './falai'
+import { PollinationsAdapter } from './pollinations'
 
 const adapterCache = new Map<string, ProviderAdapter>()
 
-export function createAdapter(config: ProviderConfig): ProviderAdapter {
-  const cached = adapterCache.get(config.name)
-  if (cached) return cached
+/**
+ * `apiKey` is supplied per-request for multi-tenant (web) callers who each have their
+ * own key; those adapters are never cached. When omitted (desktop/Electron flow), the
+ * adapter falls back to process.env and is cached as a singleton per provider.
+ */
+export function createAdapter(config: ProviderConfig, apiKey?: string): ProviderAdapter {
+  if (!apiKey) {
+    const cached = adapterCache.get(config.name)
+    if (cached) return cached
+  }
 
   let adapter: ProviderAdapter
 
@@ -20,36 +31,48 @@ export function createAdapter(config: ProviderConfig): ProviderAdapter {
     case 'native':
       switch (config.name) {
         case 'gemini':
-          adapter = new GeminiAdapter(config)
+          adapter = new GeminiAdapter(config, apiKey)
           break
         case 'mistral':
-          adapter = new MistralAdapter(config)
+          adapter = new MistralAdapter(config, apiKey)
           break
         case 'cohere':
-          adapter = new CohereAdapter(config)
+          adapter = new CohereAdapter(config, apiKey)
           break
         case 'anthropic':
-          adapter = new AnthropicAdapter(config)
+          adapter = new AnthropicAdapter(config, apiKey)
           break
         case 'huggingface':
-          adapter = new HuggingFaceAdapter(config)
+          adapter = new HuggingFaceAdapter(config, apiKey)
           break
         case 'cloudflare':
-          adapter = new CloudflareAdapter(config)
+          adapter = new CloudflareAdapter(config, apiKey)
           break
         case 'ai21':
-          adapter = new AI21Adapter(config)
+          adapter = new AI21Adapter(config, apiKey)
+          break
+        case 'stability':
+          adapter = new StabilityAdapter(config, apiKey)
+          break
+        case 'replicate':
+          adapter = new ReplicateAdapter(config, apiKey)
+          break
+        case 'falai':
+          adapter = new FalAiAdapter(config, apiKey)
+          break
+        case 'pollinations':
+          adapter = new PollinationsAdapter(config, apiKey)
           break
         default:
-          adapter = new OpenAICompatibleAdapter(config)
+          adapter = new OpenAICompatibleAdapter(config, apiKey)
       }
       break
     case 'openai-compatible':
     default:
-      adapter = new OpenAICompatibleAdapter(config)
+      adapter = new OpenAICompatibleAdapter(config, apiKey)
   }
 
-  adapterCache.set(config.name, adapter)
+  if (!apiKey) adapterCache.set(config.name, adapter)
   return adapter
 }
 

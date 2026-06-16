@@ -9,10 +9,15 @@ interface Props {
   onToggleDarkMode: () => void
 }
 
-const TABS: Array<{ id: View; label: string; icon: typeof MessageSquare }> = [
+const ALL_TABS: Array<{ id: View; label: string; icon: typeof MessageSquare }> = [
   { id: 'chat', label: 'Chat', icon: MessageSquare },
   { id: 'code', label: 'Code', icon: Code2 }
 ]
+
+// The Code/agent-mode editor reads and writes files on the local machine via
+// Electron IPC — there's no browser equivalent, so it's desktop-only.
+const isElectron = typeof window !== 'undefined' && !!window.electronAPI
+const TABS = isElectron ? ALL_TABS : ALL_TABS.filter((t) => t.id !== 'code')
 
 export function Header({ view, onViewChange, darkMode, onToggleDarkMode }: Props) {
   return (

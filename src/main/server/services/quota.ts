@@ -4,11 +4,16 @@ import { saveQuotaLog, getQuotaForProvider } from '../db/index'
 
 const degradedProviders = new Map<string, { until: number; reason: string }>()
 
-export function markDegraded(provider: string, reason: string, durationMs = 30_000): void {
-  degradedProviders.set(provider, { until: Date.now() + durationMs, reason })
+function degradedKey(userId: string, provider: string): string {
+  return `${userId}:${provider}`
+}
+
+export function markDegraded(userId: string, provider: string, reason: string, durationMs = 30_000): void {
+  degradedProviders.set(degradedKey(userId, provider), { until: Date.now() + durationMs, reason })
 }
 
 export function recordUsage(
+  userId: string,
   provider: string,
   tokensIn: number,
   tokensOut: number
@@ -17,17 +22,18 @@ export function recordUsage(
   const windowMinute = now.toISOString().slice(0, 16) + ':00Z'
   const windowDay = now.toISOString().slice(0, 10)
 
-  saveQuotaLog(provider, 1, tokensIn, tokensOut, windowMinute, windowDay)
+  saveQuotaLog(userId, provider, 1, tokensIn, tokensOut, windowMinute, windowDay)
 }
 
-export function getQuotaStatus(configs: ProviderConfig[]): QuotaStatus[] {
+export function getQuotaStatus(userId: string, configs: ProviderConfig[]): QuotaStatus[] {
   return configs.map((cfg) => {
-    const usage = getQuotaForProvider(cfg.name)
-    const degraded = degradedProviders.get(cfg.name)
+    const usage = getQuotaForProvider(userId, cfg.name)
+    const key = degradedKey(userId, cfg.name)
+    const degraded = degradedProviders.get(key)
     const isDegraded = degraded !== undefined && degraded.until > Date.now()
 
     if (degraded && degraded.until <= Date.now()) {
-      degradedProviders.delete(cfg.name)
+      degradedProviders.delete(key)
     }
 
     return {
@@ -38,6 +44,8 @@ export function getQuotaStatus(configs: ProviderConfig[]): QuotaStatus[] {
       tpmLimit: cfg.tpmLimit,
       dailyTokensRemaining: Math.max(0, cfg.dailyTokenLimit - usage.dayTokensIn),
       dailyTokenLimit: cfg.dailyTokenLimit,
+      dailyRequestsRemaining: cfg.dailyRequestLimit !== undefined ? Math.max(0, cfg.dailyRequestLimit - usage.dayRequests) : undefined,
+      dailyRequestLimit: cfg.dailyRequestLimit,
       degraded: isDegraded,
       lastError: isDegraded ? degraded?.reason : undefined
     }

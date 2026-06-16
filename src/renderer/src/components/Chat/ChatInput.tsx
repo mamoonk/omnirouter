@@ -25,6 +25,10 @@ const MODES: Array<{ id: AgentMode; label: string; icon: typeof Wand2; title: st
 
 const MIME_PATTERN = /^(image|video|audio)\//
 
+// Self-improve mode reads/writes the app's own source tree on the local
+// machine via the Electron-only /api/self-improve route — desktop-only.
+const isElectron = typeof window !== 'undefined' && !!window.electronAPI
+
 export function ChatInput({ onSend, onStop, streaming, selfImprove, onToggleSelfImprove, debate, onToggleDebate, placeholder, agentMode, onAgentModeChange }: Props) {
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -142,17 +146,19 @@ export function ChatInput({ onSend, onStop, streaming, selfImprove, onToggleSelf
           {/* Hide self-improve / debate toggles when in code-agent mode (always active there) */}
           {!agentMode && (
             <>
-              <button
-                onClick={onToggleSelfImprove}
-                className={`shrink-0 rounded-xl p-3 transition-colors ${
-                  selfImprove
-                    ? 'bg-purple-500 text-white hover:bg-purple-600'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-                title={selfImprove ? 'Self-improvement mode ON' : 'Self-improvement mode OFF'}
-              >
-                <Code2 size={18} />
-              </button>
+              {isElectron && (
+                <button
+                  onClick={onToggleSelfImprove}
+                  className={`shrink-0 rounded-xl p-3 transition-colors ${
+                    selfImprove
+                      ? 'bg-purple-500 text-white hover:bg-purple-600'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                  title={selfImprove ? 'Self-improvement mode ON' : 'Self-improvement mode OFF'}
+                >
+                  <Code2 size={18} />
+                </button>
+              )}
               <button
                 onClick={onToggleDebate}
                 className={`shrink-0 rounded-xl p-3 transition-colors ${

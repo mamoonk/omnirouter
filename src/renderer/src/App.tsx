@@ -5,12 +5,17 @@ import { ChatInterface } from './components/Chat/ChatInterface'
 import { CodeInterface } from './components/Code/CodeInterface'
 import { UsageDashboard } from './components/Dashboard/UsageDashboard'
 import { SettingsPanel } from './components/Layout/SettingsPanel'
+import { Login } from './components/Auth/Login'
 import { useSettings } from './hooks/useSettings'
 
 type View = 'chat' | 'code' | 'dashboard' | 'settings'
 
+const isElectron = typeof window !== 'undefined' && !!window.electronAPI
+
 export default function App() {
   const [serverPort, setServerPort] = useState(0)
+  const [authChecked, setAuthChecked] = useState(isElectron)
+  const [authedUser, setAuthedUser] = useState<{ id: string; email: string } | null>(null)
   const [view, setView] = useState<View>('chat')
   const [prevView, setPrevView] = useState<View>('chat')
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
@@ -25,6 +30,18 @@ export default function App() {
         const port = await window.electronAPI.getServerPort()
         setServerPort(port)
         window.electronAPI.onServerPort((p) => setServerPort(p))
+        return
+      }
+
+      // Web build: no port discovery needed (same-origin); gate on the session instead.
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' })
+        if (res.ok) {
+          setAuthedUser(await res.json())
+          setServerPort(1)
+        }
+      } finally {
+        setAuthChecked(true)
       }
     }
     init()
@@ -58,6 +75,25 @@ export default function App() {
   const onConversationSaved = useCallback(() => {
     setRefreshSignal((s) => s + 1)
   }, [])
+
+  if (!authChecked) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400">
+        <p>Connecting...</p>
+      </div>
+    )
+  }
+
+  if (!isElectron && !authedUser) {
+    return (
+      <Login
+        onAuthed={(user) => {
+          setAuthedUser(user)
+          setServerPort(1)
+        }}
+      />
+    )
+  }
 
   if (!serverPort) {
     return (
@@ -101,7 +137,7 @@ export default function App() {
             onViewChange={handleViewChange}
           />
         )}
-        {view === 'code' && (
+        {view === 'code' && isElectron && (
           <CodeInterface
             serverPort={serverPort}
             onConversationSaved={onConversationSaved}
