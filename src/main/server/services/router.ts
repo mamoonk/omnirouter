@@ -83,12 +83,6 @@ export async function routeRequest(
     return handleImageRequest(messages, promptHash, options, step)
   }
 
-  const compressed = compressMessages(messages, options.compressionEnabled)
-  const optimized = optimizeMessages(compressed, options.tokenOptimization ?? false, options.tokenOptimizationThreshold ?? 70)
-  const finalMessages = optimized.messages
-  if (options.compressionEnabled || options.tokenOptimization) {
-    step.log('tool', 'Optimizing context', `Prepared ${finalMessages.length} message(s) for the model`)
-  }
   const providers = getChatProviders()
   const availableProviders = providers.filter((p) => process.env[p.apiKeyEnv])
 
@@ -110,12 +104,37 @@ export async function routeRequest(
     }
   }
 
+  const compressed = compressMessages(messages, options.compressionEnabled)
+
+  // Determine context window from the top-scoring available provider so the
+  // optimizer can set an accurate token budget before we make any API call.
+  const previewScores = await scoreProviders(availableProviders, intent, options.routingStrategy)
+  previewScores.sort((a, b) => b.score - a.score)
+  const topProvider = availableProviders.find((p) => p.name === previewScores[0]?.provider)
+  const topModel = topProvider ? getBestAvailableModel(topProvider, intent) : undefined
+  const modelContextWindow = topProvider?.models.find((m) => m.id === topModel)?.contextWindow ?? 128_000
+
+  const optimized = optimizeMessages(
+    compressed,
+    options.tokenOptimization ?? false,
+    options.tokenOptimizationThreshold ?? 70,
+    modelContextWindow
+  )
+  const finalMessages = optimized.messages
+  if (options.compressionEnabled || options.tokenOptimization) {
+    const saved = optimized.originalTokens - optimized.optimizedTokens
+    const detail = saved > 0
+      ? `${finalMessages.length} message(s) · saved ~${saved} tokens (window: ${modelContextWindow.toLocaleString()})`
+      : `${finalMessages.length} message(s) · no reduction needed`
+    step.log('tool', 'Optimizing context', detail)
+  }
+
   const strategyLabel = options.routingStrategy && options.routingStrategy !== 'smart'
     ? `${options.routingStrategy} strategy`
     : 'smart routing'
   const rankStep = step.start('route', 'Ranking providers', `Scoring ${availableProviders.length} provider(s) with ${strategyLabel}`)
-  const scores = await scoreProviders(availableProviders, intent, options.routingStrategy)
-  scores.sort((a, b) => b.score - a.score)
+  // Reuse the scores already computed for the context-window preview above
+  const scores = previewScores
   const top = scores.slice(0, 3).map((s) => `${s.provider} (${s.score.toFixed(2)})`).join(', ')
   rankStep.done(`Top pick: ${top}`)
 

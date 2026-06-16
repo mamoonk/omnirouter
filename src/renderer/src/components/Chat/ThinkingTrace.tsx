@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ActivityStep } from '@shared/types'
 import {
   Brain,
@@ -40,9 +40,11 @@ function StatusIcon({ status }: { status: ActivityStep['status'] }) {
 
 export function ThinkingTrace({ steps, live }: Props) {
   const hasSteps = !!steps && steps.length > 0
-  // Collapsed by default — the header shows a live summary; the user expands
-  // the full step-by-step trace only if they want the detail.
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(live)
+
+  useEffect(() => {
+    if (live) setOpen(true)
+  }, [live])
 
   if (!hasSteps) return null
 

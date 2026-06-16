@@ -1,6 +1,7 @@
 import { Router } from 'express'
-import { writeFileSync, mkdirSync } from 'fs'
+import { writeFileSync, mkdirSync, existsSync } from 'fs'
 import { join, dirname, normalize, relative } from 'path'
+import { exec } from 'child_process'
 import { getTreeNodes } from '../services/projectAgent'
 
 export const codeRouter = Router()
@@ -41,4 +42,34 @@ codeRouter.post('/apply', (req, res) => {
     }
   }
   res.json({ success: results.every(r => r.status === 'written'), results })
+})
+
+codeRouter.post('/lint', (req, res) => {
+  const { projectRoot } = req.body as { projectRoot?: string }
+  if (!projectRoot) { res.status(400).json({ error: 'projectRoot is required' }); return }
+
+  const root = normalize(projectRoot)
+  const tsconfig = join(root, 'tsconfig.json')
+
+  if (!existsSync(tsconfig)) {
+    // No TypeScript project — return empty result so the UI skips silently
+    res.json({ errors: [], warnings: [], raw: '' })
+    return
+  }
+
+  // Run tsc with no colour codes so output is easy to parse
+  exec('npx tsc --noEmit --pretty false 2>&1', { cwd: root, timeout: 30_000 }, (_err, stdout) => {
+    const raw = stdout.trim()
+    const lines = raw.split('\n').filter(Boolean)
+
+    const errors: string[] = []
+    const warnings: string[] = []
+
+    for (const line of lines) {
+      if (/error TS\d+/i.test(line)) errors.push(line)
+      else if (/warning TS\d+/i.test(line)) warnings.push(line)
+    }
+
+    res.json({ errors, warnings, raw })
+  })
 })

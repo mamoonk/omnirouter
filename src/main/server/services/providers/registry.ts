@@ -7,8 +7,8 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'GEMINI_API_KEY',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     models: [
-      { id: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash', contextWindow: 1_000_000, strengths: ['factual', 'long_doc', 'creative'] },
-      { id: 'gemini-2.5-flash-lite', displayName: 'Gemini 2.5 Flash Lite', contextWindow: 1_000_000, strengths: ['factual'] },
+      { id: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash', contextWindow: 1_000_000, strengths: ['factual', 'long_doc', 'creative', 'code'], capabilities: ['tool_use', 'vision'] },
+      { id: 'gemini-2.5-flash-lite', displayName: 'Gemini 2.5 Flash Lite', contextWindow: 1_000_000, strengths: ['factual'], capabilities: ['tool_use'] },
       { id: 'imagen-3.0-generate-001', displayName: 'Imagen 3.0', contextWindow: 4000, strengths: ['creative'], capabilities: ['image'] }
     ],
     rpmLimit: 15,
@@ -24,7 +24,7 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'GROQ_API_KEY',
     baseUrl: 'https://api.groq.com/openai/v1',
     models: [
-      { id: 'llama-3.3-70b-versatile', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'] },
+      { id: 'llama-3.3-70b-versatile', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'], capabilities: ['tool_use'] },
       { id: 'mixtral-8x7b-32768', displayName: 'Mixtral 8x7B', contextWindow: 32_768, strengths: ['factual', 'creative'] }
     ],
     rpmLimit: 30,
@@ -40,7 +40,7 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'MISTRAL_API_KEY',
     baseUrl: 'https://api.mistral.ai/v1',
     models: [
-      { id: 'mistral-small-latest', displayName: 'Mistral Small', contextWindow: 32_000, strengths: ['factual', 'code'] },
+      { id: 'mistral-small-latest', displayName: 'Mistral Small', contextWindow: 32_000, strengths: ['factual', 'code'], capabilities: ['tool_use'] },
       { id: 'open-mistral-7b', displayName: 'Open Mistral 7B', contextWindow: 8_000, strengths: ['factual'] }
     ],
     rpmLimit: 5,
@@ -56,8 +56,8 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'COHERE_API_KEY',
     baseUrl: 'https://api.cohere.com/v2',
     models: [
-      { id: 'command-r', displayName: 'Command R', contextWindow: 128_000, strengths: ['factual', 'long_doc'] },
-      { id: 'command-r-plus', displayName: 'Command R+', contextWindow: 128_000, strengths: ['factual', 'long_doc'] }
+      { id: 'command-r', displayName: 'Command R', contextWindow: 128_000, strengths: ['factual', 'long_doc'], capabilities: ['tool_use'] },
+      { id: 'command-r-plus', displayName: 'Command R+', contextWindow: 128_000, strengths: ['factual', 'long_doc', 'code'], capabilities: ['tool_use'] }
     ],
     rpmLimit: 10,
     tpmLimit: 100_000,
@@ -72,8 +72,8 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'OPENAI_API_KEY',
     baseUrl: 'https://api.openai.com/v1',
     models: [
-      { id: 'gpt-4o-mini', displayName: 'GPT-4o Mini', contextWindow: 128_000, strengths: ['code', 'creative', 'factual'] },
-      { id: 'gpt-4o', displayName: 'GPT-4o', contextWindow: 128_000, strengths: ['code', 'creative'] }
+      { id: 'gpt-4o-mini', displayName: 'GPT-4o Mini', contextWindow: 128_000, strengths: ['code', 'creative', 'factual'], capabilities: ['tool_use', 'vision'] },
+      { id: 'gpt-4o', displayName: 'GPT-4o', contextWindow: 128_000, strengths: ['code', 'creative', 'factual'], capabilities: ['tool_use', 'vision'] }
     ],
     rpmLimit: 10,
     tpmLimit: 200_000,
@@ -88,8 +88,8 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'ANTHROPIC_API_KEY',
     baseUrl: 'https://api.anthropic.com/v1',
     models: [
-      { id: 'claude-3-haiku-20240307', displayName: 'Claude 3 Haiku', contextWindow: 200_000, strengths: ['code', 'factual'] },
-      { id: 'claude-3-5-sonnet-20241022', displayName: 'Claude 3.5 Sonnet', contextWindow: 200_000, strengths: ['code', 'creative'] }
+      { id: 'claude-3-haiku-20240307', displayName: 'Claude 3 Haiku', contextWindow: 200_000, strengths: ['code', 'factual'], capabilities: ['tool_use', 'vision'] },
+      { id: 'claude-3-5-sonnet-20241022', displayName: 'Claude 3.5 Sonnet', contextWindow: 200_000, strengths: ['code', 'creative', 'factual'], capabilities: ['tool_use', 'vision'] }
     ],
     rpmLimit: 5,
     tpmLimit: 100_000,
@@ -104,7 +104,7 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'DEEPSEEK_API_KEY',
     baseUrl: 'https://api.deepseek.com/v1',
     models: [
-      { id: 'deepseek-chat', displayName: 'DeepSeek V3', contextWindow: 128_000, strengths: ['code', 'factual'] }
+      { id: 'deepseek-chat', displayName: 'DeepSeek V3', contextWindow: 128_000, strengths: ['code', 'factual', 'creative'], capabilities: ['tool_use'] }
     ],
     rpmLimit: 30,
     tpmLimit: 500_000,
@@ -119,8 +119,8 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'TOGETHER_API_KEY',
     baseUrl: 'https://api.together.xyz/v1',
     models: [
-      { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', displayName: 'Llama 3.1 8B', contextWindow: 131_072, strengths: ['factual', 'code'] },
-      { id: 'mistralai/Mixtral-8x22B-Instruct-v0.1', displayName: 'Mixtral 8x22B', contextWindow: 65_536, strengths: ['creative', 'factual'] }
+      { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', displayName: 'Llama 3.1 8B', contextWindow: 131_072, strengths: ['factual', 'code'], capabilities: ['tool_use'] },
+      { id: 'mistralai/Mixtral-8x22B-Instruct-v0.1', displayName: 'Mixtral 8x22B', contextWindow: 65_536, strengths: ['creative', 'factual', 'code'], capabilities: ['tool_use'] }
     ],
     rpmLimit: 10,
     tpmLimit: 100_000,
@@ -135,8 +135,8 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'FIREWORKS_API_KEY',
     baseUrl: 'https://api.fireworks.ai/inference/v1',
     models: [
-      { id: 'accounts/fireworks/models/llama-v3p1-8b-instruct', displayName: 'Llama 3.1 8B', contextWindow: 131_072, strengths: ['factual', 'code'] },
-      { id: 'accounts/fireworks/models/mixtral-8x7b-instruct', displayName: 'Mixtral 8x7B', contextWindow: 32_768, strengths: ['creative'] }
+      { id: 'accounts/fireworks/models/llama-v3p1-8b-instruct', displayName: 'Llama 3.1 8B', contextWindow: 131_072, strengths: ['factual', 'code'], capabilities: ['tool_use'] },
+      { id: 'accounts/fireworks/models/mixtral-8x7b-instruct', displayName: 'Mixtral 8x7B', contextWindow: 32_768, strengths: ['creative', 'factual'] }
     ],
     rpmLimit: 10,
     tpmLimit: 100_000,
@@ -151,8 +151,8 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'OPENROUTER_API_KEY',
     baseUrl: 'https://openrouter.ai/api/v1',
     models: [
-      { id: 'meta-llama/llama-3.3-70b-instruct', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'] },
-      { id: 'mistralai/mistral-small-3.1-24b-instruct', displayName: 'Mistral Small 3.1', contextWindow: 32_000, strengths: ['factual'] }
+      { id: 'meta-llama/llama-3.3-70b-instruct', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'], capabilities: ['tool_use'] },
+      { id: 'mistralai/mistral-small-3.1-24b-instruct', displayName: 'Mistral Small 3.1', contextWindow: 32_000, strengths: ['factual', 'code'], capabilities: ['tool_use'] }
     ],
     rpmLimit: 10,
     tpmLimit: 100_000,
@@ -167,7 +167,7 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'NVIDIA_API_KEY',
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     models: [
-      { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', displayName: 'Nemotron 3 Super', contextWindow: 262_144, strengths: ['code', 'factual'] }
+      { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', displayName: 'Nemotron 3 Super', contextWindow: 262_144, strengths: ['code', 'factual', 'creative'], capabilities: ['tool_use'] }
     ],
     rpmLimit: 10,
     tpmLimit: 200_000,
@@ -182,7 +182,8 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'PERPLEXITY_API_KEY',
     baseUrl: 'https://api.perplexity.ai',
     models: [
-      { id: 'sonar-pro', displayName: 'Sonar Pro', contextWindow: 200_000, strengths: ['factual', 'creative'] }
+      // Sonar Pro is a web-search-augmented model — excellent for up-to-date factual queries
+      { id: 'sonar-pro', displayName: 'Sonar Pro', contextWindow: 200_000, strengths: ['factual'] }
     ],
     rpmLimit: 10,
     tpmLimit: 100_000,
@@ -197,7 +198,7 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'XAI_API_KEY',
     baseUrl: 'https://api.x.ai/v1',
     models: [
-      { id: 'grok-2-1212', displayName: 'Grok 2', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'] }
+      { id: 'grok-2-1212', displayName: 'Grok 2', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'], capabilities: ['tool_use', 'vision'] }
     ],
     rpmLimit: 10,
     tpmLimit: 100_000,
@@ -212,7 +213,7 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'EDEN_API_KEY',
     baseUrl: 'https://api.edenai.run/v2',
     models: [
-      { id: 'openai/gpt-4o-mini', displayName: 'GPT-4o Mini (via Eden)', contextWindow: 128_000, strengths: ['code', 'creative'] }
+      { id: 'openai/gpt-4o-mini', displayName: 'GPT-4o Mini (via Eden)', contextWindow: 128_000, strengths: ['code', 'creative', 'factual'], capabilities: ['tool_use'] }
     ],
     rpmLimit: 10,
     tpmLimit: 50_000,
@@ -227,7 +228,7 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'SILICONFLOW_API_KEY',
     baseUrl: 'https://api.siliconflow.cn/v1',
     models: [
-      { id: 'Qwen/Qwen2.5-7B-Instruct', displayName: 'Qwen 2.5 7B', contextWindow: 32_768, strengths: ['factual', 'code'] }
+      { id: 'Qwen/Qwen2.5-7B-Instruct', displayName: 'Qwen 2.5 7B', contextWindow: 32_768, strengths: ['factual', 'code'], capabilities: ['tool_use'] }
     ],
     rpmLimit: 10,
     tpmLimit: 50_000,
@@ -242,7 +243,7 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'CEREBRAS_API_KEY',
     baseUrl: 'https://api.cerebras.ai/v1',
     models: [
-      { id: 'llama-3.3-70b', displayName: 'Llama 3.3 70B', contextWindow: 128_000, strengths: ['factual', 'code'] }
+      { id: 'llama-3.3-70b', displayName: 'Llama 3.3 70B', contextWindow: 128_000, strengths: ['factual', 'code', 'creative'], capabilities: ['tool_use'] }
     ],
     rpmLimit: 5,
     tpmLimit: 30_000,
@@ -257,7 +258,7 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'HUGGINGFACE_API_KEY',
     baseUrl: 'https://api-inference.huggingface.co/models',
     models: [
-      { id: 'meta-llama/Llama-3.3-70B-Instruct', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'] },
+      { id: 'meta-llama/Llama-3.3-70B-Instruct', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'], capabilities: ['tool_use'] },
       { id: 'mistralai/Mistral-7B-Instruct-v0.3', displayName: 'Mistral 7B', contextWindow: 32_768, strengths: ['factual'] }
     ],
     rpmLimit: 10,
@@ -273,7 +274,7 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'CLOUDFLARE_API_KEY',
     baseUrl: 'https://api.cloudflare.com/client/v4/accounts',
     models: [
-      { id: '@cf/meta/llama-3.3-70b-instruct-fp8', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code'] }
+      { id: '@cf/meta/llama-3.3-70b-instruct-fp8', displayName: 'Llama 3.3 70B', contextWindow: 131_072, strengths: ['factual', 'code'], capabilities: ['tool_use'] }
     ],
     rpmLimit: 10,
     tpmLimit: 50_000,
@@ -288,8 +289,8 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'DASHSCOPE_API_KEY',
     baseUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
     models: [
-      { id: 'qwen-plus', displayName: 'Qwen Plus', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'] },
-      { id: 'qwen-turbo', displayName: 'Qwen Turbo', contextWindow: 1_000_000, strengths: ['factual', 'long_doc'] }
+      { id: 'qwen-plus', displayName: 'Qwen Plus', contextWindow: 131_072, strengths: ['factual', 'code', 'creative'], capabilities: ['tool_use'] },
+      { id: 'qwen-turbo', displayName: 'Qwen Turbo', contextWindow: 1_000_000, strengths: ['factual', 'long_doc'], capabilities: ['tool_use'] }
     ],
     rpmLimit: 60,
     tpmLimit: 500_000,
@@ -304,8 +305,8 @@ export const PROVIDER_CONFIGS: ProviderConfig[] = [
     apiKeyEnv: 'AI21_API_KEY',
     baseUrl: 'https://api.ai21.com/studio/v1',
     models: [
-      { id: 'jamba-1.5-mini', displayName: 'Jamba 1.5 Mini', contextWindow: 256_000, strengths: ['factual', 'creative'] },
-      { id: 'jamba-1.5-large', displayName: 'Jamba 1.5 Large', contextWindow: 256_000, strengths: ['code', 'creative'] }
+      { id: 'jamba-1.5-mini', displayName: 'Jamba 1.5 Mini', contextWindow: 256_000, strengths: ['factual', 'creative', 'long_doc'] },
+      { id: 'jamba-1.5-large', displayName: 'Jamba 1.5 Large', contextWindow: 256_000, strengths: ['code', 'creative', 'factual', 'long_doc'] }
     ],
     rpmLimit: 10,
     tpmLimit: 100_000,
@@ -330,4 +331,14 @@ export function getChatProviders(): ProviderConfig[] {
 
 export function getImageCapableProviders(): ProviderConfig[] {
   return PROVIDER_CONFIGS.filter((p) => p.enabled && p.models.some((m) => m.capabilities?.includes('image')))
+}
+
+/** Returns providers that have at least one model with tool_use capability — required for coding agents. */
+export function getToolUseCapableProviders(): ProviderConfig[] {
+  return PROVIDER_CONFIGS.filter((p) => p.enabled && p.models.some((m) => m.capabilities?.includes('tool_use')))
+}
+
+/** Returns providers that have at least one model with vision capability. */
+export function getVisionCapableProviders(): ProviderConfig[] {
+  return PROVIDER_CONFIGS.filter((p) => p.enabled && p.models.some((m) => m.capabilities?.includes('vision')))
 }

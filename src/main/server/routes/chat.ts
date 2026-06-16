@@ -11,7 +11,7 @@ import { runDebate } from '../services/debate'
 export const chatRouter = Router()
 
 chatRouter.post('/stream', async (req, res) => {
-  const { conversationId, content, selfImprove, debate, attachments, projectId, codeProjectRoot } = req.body
+  const { conversationId, content, selfImprove, debate, attachments, projectId, codeProjectRoot, agentMode } = req.body
 
   if (!content && (!attachments || attachments.length === 0)) {
     res.status(400).json({ error: 'Content or attachments is required' })
@@ -49,12 +49,12 @@ chatRouter.post('/stream', async (req, res) => {
       if (codeProjectRoot) {
         sendStep({ id: 'agent-read', kind: 'tool', label: 'Reading project', detail: `Scanning ${codeProjectRoot}`, status: 'running' })
         const nodes = getTreeNodes(codeProjectRoot)
-        const systemContent = buildProjectSystemPrompt(content, codeProjectRoot, nodes)
+        const systemContent = buildProjectSystemPrompt(content, codeProjectRoot, nodes, agentMode || 'generate')
         sendStep({ id: 'agent-read', kind: 'tool', label: 'Read project', detail: 'Loaded file tree and relevant files', status: 'done' })
         msgs.unshift({ role: 'system' as const, content: systemContent })
       } else {
         sendStep({ id: 'agent-read', kind: 'tool', label: 'Reading project source', detail: 'Scanning the app codebase for relevant files', status: 'running' })
-        const systemContent = buildSystemPrompt(content)
+        const systemContent = buildSystemPrompt(content, agentMode || 'generate')
         sendStep({ id: 'agent-read', kind: 'tool', label: 'Read project source', detail: 'Loaded the file tree and relevant files into context', status: 'done' })
         msgs.unshift({ role: 'system' as const, content: systemContent })
       }

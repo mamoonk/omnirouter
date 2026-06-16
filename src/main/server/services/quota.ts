@@ -55,10 +55,12 @@ export function getBestAvailableModel(
     return sorted[0].id
   }
 
-  const scored = models.map((m) => ({
-    id: m.id,
-    score: m.strengths.includes(intent as any) ? 1 : 0
-  }))
+  const scored = models.map((m) => {
+    let score = m.strengths.includes(intent as any) ? 1 : 0
+    // For coding/agent tasks, prefer models that support tool use (function calling)
+    if (intent === 'code' && m.capabilities?.includes('tool_use')) score += 0.5
+    return { id: m.id, score }
+  })
   scored.sort((a, b) => b.score - a.score)
   return scored[0]?.id || models[0].id
 }

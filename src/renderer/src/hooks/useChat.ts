@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { ApiClient } from '../lib/api'
-import type { ActivityStep, Attachment, DebateData, Message } from '@shared/types'
+import type { ActivityStep, AgentMode, Attachment, DebateData, Message } from '@shared/types'
 
 export function useChat(
   serverPort: number,
@@ -20,10 +20,13 @@ export function useChat(
   const [debate, setDebate] = useState(false)
   const [debateData, setDebateData] = useState<DebateData | null>(null)
   const [editResults, setEditResults] = useState<{ applied: Array<{ path: string }>; failed: Array<{ path: string; error: string }> } | null>(null)
+  const [lintResults, setLintResults] = useState<{ errors: string[]; warnings: string[]; raw: string } | null>(null)
+  const [agentMode, setAgentMode] = useState<AgentMode>('generate')
   const abortRef = useRef<AbortController | null>(null)
   const pendingRef = useRef(false)
   const selfImproveRef = useRef(false)
   const debateRef = useRef(false)
+  const agentModeRef = useRef<AgentMode>('generate')
   const assistantContentRef = useRef('')
 
   const toggleSelfImprove = useCallback(() => {
@@ -42,11 +45,17 @@ export function useChat(
     })
   }, [])
 
+  const changeAgentMode = useCallback((mode: AgentMode) => {
+    agentModeRef.current = mode
+    setAgentMode(mode)
+  }, [])
+
   const sendMessage = useCallback(async (content: string, attachments?: Attachment[]) => {
     setError(null)
     setStreaming(true)
     setDebateData(null)
     setEditResults(null)
+    setLintResults(null)
     assistantContentRef.current = ''
 
     const userMsg: Message = { role: 'user', content, createdAt: new Date().toISOString(), attachments }
@@ -112,7 +121,7 @@ export function useChat(
             return updated
           })
         },
-        { signal: abort.signal, selfImprove: selfImproveRef.current || !!codeProjectRoot, debate: debateRef.current, attachments, onStep: upsertStep, projectId, codeProjectRoot }
+        { signal: abort.signal, selfImprove: selfImproveRef.current || !!codeProjectRoot, debate: debateRef.current, attachments, onStep: upsertStep, projectId, codeProjectRoot, agentMode: agentModeRef.current }
       )
 
       const wasSelfImprove = selfImproveRef.current || !!codeProjectRoot
@@ -138,6 +147,27 @@ export function useChat(
                   applied: applied.map((r) => ({ path: r.path })),
                   failed: failed.map((r) => ({ path: r.path, error: r.error || '' }))
                 })
+              }
+
+              // Run lint after writing files (TypeScript projects only)
+              if (applied.length > 0 && codeProjectRoot) {
+                try {
+                  upsertStep({ id: 'agent-lint', kind: 'tool', label: 'Running type checker', detail: 'tsc --noEmit', status: 'running' })
+                  const lint = await api.lintProject(codeProjectRoot)
+                  setLintResults(lint)
+                  if (lint.errors.length > 0) {
+                    upsertStep({ id: 'agent-lint', kind: 'tool', label: `Type errors found (${lint.errors.length})`, detail: 'Click "Ask agent to fix" to auto-resolve', status: 'fail' })
+                  } else if (lint.warnings.length > 0) {
+                    upsertStep({ id: 'agent-lint', kind: 'tool', label: 'Type check passed with warnings', detail: `${lint.warnings.length} warning(s)`, status: 'done' })
+                  } else if (lint.raw !== '') {
+                    upsertStep({ id: 'agent-lint', kind: 'tool', label: 'Type check passed', detail: 'No errors or warnings', status: 'done' })
+                  } else {
+                    // no tsconfig found — skip silently
+                    upsertStep({ id: 'agent-lint', kind: 'tool', label: 'Type check skipped', detail: 'No tsconfig.json found in project', status: 'done' })
+                  }
+                } catch {
+                  upsertStep({ id: 'agent-lint', kind: 'tool', label: 'Type check skipped', detail: 'Could not run tsc', status: 'done' })
+                }
               }
               // In code-project mode, strip the raw <edits> blob from the displayed
               // message — the applied-files summary already shows what changed.
@@ -232,6 +262,9 @@ export function useChat(
     debate,
     debateData,
     editResults,
+    lintResults,
+    agentMode,
+    changeAgentMode,
     sendMessage,
     stopStreaming,
     loadMessages,

@@ -71,14 +71,16 @@ export function getIntentScores(intent: IntentCategory): Record<string, number> 
         dashscope: 0.6, ai21: 0.5
       }
     case 'code':
+      // Scores reflect coding ability + tool_use support (needed for agentic coding tasks).
+      // Top tier: strong coding + reliable function calling.
       return {
-        openai: 1.0, anthropic: 1.0, deepseek: 0.9,
-        gemini: 0.7, groq: 0.7, cerebras: 0.6,
-        mistral: 0.8, together: 0.7, fireworks: 0.7,
-        openrouter: 0.8, nvidia: 0.9, xai: 0.7,
-        perplexity: 0.4, eden: 0.6, siliconflow: 0.5,
-        huggingface: 0.5, cloudflare: 0.4, dashscope: 0.7,
-        ai21: 0.6, cohere: 0.4
+        openai: 1.0, anthropic: 1.0, deepseek: 0.95,
+        nvidia: 0.9, mistral: 0.85, openrouter: 0.85,
+        gemini: 0.8, groq: 0.75, xai: 0.75,
+        dashscope: 0.75, together: 0.7, fireworks: 0.7,
+        cerebras: 0.65, eden: 0.65, cohere: 0.6,
+        siliconflow: 0.55, huggingface: 0.5,
+        cloudflare: 0.45, perplexity: 0.2, ai21: 0.5
       }
     case 'long_doc':
       return {
@@ -104,7 +106,7 @@ export function getIntentScores(intent: IntentCategory): Record<string, number> 
       return {
         openai: 1.0, together: 0.9, huggingface: 0.7,
         siliconflow: 0.6, eden: 0.5, nvidia: 0.5,
-        firework: 0.4, openrouter: 0.3, dashscope: 0.3,
+        fireworks: 0.4, openrouter: 0.3, dashscope: 0.3,
         gemini: 0.1, groq: 0.1, deepseek: 0.1,
         anthropic: 0.1, mistral: 0.1, cohere: 0.1,
         cerebras: 0.1, perplexity: 0.1, xai: 0.1,

@@ -1,5 +1,6 @@
 import type {
   ActivityStep,
+  AgentMode,
   Attachment,
   Conversation,
   DebateData,
@@ -36,12 +37,12 @@ export class ApiClient {
     conversationId: string,
     content: string,
     onToken: (token: string, provider?: string, model?: string, debate?: DebateData) => void,
-    options?: { signal?: AbortSignal; selfImprove?: boolean; debate?: boolean; attachments?: Attachment[]; onStep?: (step: ActivityStep) => void; projectId?: string | null; codeProjectRoot?: string | null }
+    options?: { signal?: AbortSignal; selfImprove?: boolean; debate?: boolean; attachments?: Attachment[]; onStep?: (step: ActivityStep) => void; projectId?: string | null; codeProjectRoot?: string | null; agentMode?: AgentMode }
   ): Promise<void> {
     const res = await fetch(`${this.baseUrl}/api/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId, content, selfImprove: options?.selfImprove || false, debate: options?.debate || false, attachments: options?.attachments, projectId: options?.projectId ?? null, codeProjectRoot: options?.codeProjectRoot ?? null }),
+      body: JSON.stringify({ conversationId, content, selfImprove: options?.selfImprove || false, debate: options?.debate || false, attachments: options?.attachments, projectId: options?.projectId ?? null, codeProjectRoot: options?.codeProjectRoot ?? null, agentMode: options?.agentMode ?? 'generate' }),
       signal: options?.signal
     })
 
@@ -242,5 +243,14 @@ export class ApiClient {
     const res = await fetch(`${this.baseUrl}/api/code/tree?root=${encodeURIComponent(root)}`)
     const data = await res.json()
     return data.nodes as TreeNode[]
+  }
+
+  async lintProject(projectRoot: string): Promise<{ errors: string[]; warnings: string[]; raw: string }> {
+    const res = await fetch(`${this.baseUrl}/api/code/lint`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectRoot })
+    })
+    return res.json()
   }
 }

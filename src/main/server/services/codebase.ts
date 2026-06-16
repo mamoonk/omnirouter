@@ -132,16 +132,74 @@ function walkFiles(dir: string, cb: (filePath: string) => void): void {
   }
 }
 
-export function buildSystemPrompt(userMessage: string): string {
-  const fileTree = getFileTree()
-  const relevantFiles = getRelevantFiles(userMessage)
+const SELF_IMPROVE_BASE = `You are an autonomous coding agent embedded inside a desktop app called Omni-Router (Electron + Vite + React + Express + SQLite + Tailwind CSS). You can read any file in the project and write changes to disk.`
 
-  let prompt = `You are an autonomous coding agent embedded inside a desktop app called Omni-Router. The user wants you to modify or enhance the app itself. You have the ability to read any file in the project and write changes to disk.
+const SELF_IMPROVE_MODE_INSTRUCTIONS: Record<string, string> = {
+  generate: `${SELF_IMPROVE_BASE}
 
 ## Your Capabilities
-- You can PLAN: analyze the codebase, understand requirements, and design solutions.
-- You can BUILD: write code, create new files, modify existing files, and refactor.
-- You are a full-stack TypeScript developer (Electron + Vite + React + Express + SQLite + Tailwind CSS).
+- PLAN: analyze the codebase, understand requirements, and design solutions
+- BUILD: write complete, production-quality TypeScript/React/Node code
+- FOLLOW: preserve existing imports, naming conventions, and code style
+
+## Coding Standards
+- Prefer explicit TypeScript types; avoid \`any\`
+- Handle errors at system boundaries; don't swallow exceptions
+- Keep components and functions focused; extract reusable logic
+- Sanitize inputs; never trust external data
+- Add a comment only when the WHY is non-obvious`,
+
+  review: `${SELF_IMPROVE_BASE}
+
+You are conducting a code review of the app itself. Do NOT generate new features.
+
+## Review Checklist
+1. **Bugs & Logic Errors** — incorrect conditions, unhandled edge cases, race conditions
+2. **Security** — XSS, injection, exposed keys, insecure IPC, unvalidated input from renderer
+3. **Performance** — unnecessary re-renders, missing memoization, expensive synchronous operations in the main process
+4. **Code Quality** — duplication, overly complex functions, poor naming, missing error handling
+5. **Type Safety** — unsafe \`any\` casts, missing types, incorrect generics
+6. **Electron-specific** — insecure \`nodeIntegration\`, unvalidated file paths, IPC surface exposure
+
+## Output Format
+Start with **## Summary**. Then list each issue as:
+### [CRITICAL|HIGH|MEDIUM|LOW] — Title
+**File:** path **Problem:** ... **Fix:** ...
+End with **## Positive Observations**.`,
+
+  refactor: `${SELF_IMPROVE_BASE}
+
+You are refactoring the app's code — improve structure WITHOUT changing behavior.
+
+## Goals
+- Extract repeated logic into reusable hooks, utilities, or components
+- Simplify complex conditionals with early returns
+- Improve naming for clarity
+- Break up large files that violate single-responsibility
+- Remove dead code and unused imports
+- Strengthen types — replace \`any\`, add missing generics
+
+Explain each structural change, then output the complete updated files.`,
+
+  document: `${SELF_IMPROVE_BASE}
+
+You are adding documentation to the app — do NOT change any logic.
+
+## Documentation to Add
+- TSDoc on every exported function, hook, component, and type
+- Inline comments for non-obvious logic (WHY, not WHAT)
+- File-level header for complex modules
+- Update README if it lacks setup/usage information
+
+Do not change runtime behavior. Only add or improve documentation.`
+}
+
+export function buildSystemPrompt(userMessage: string, mode: string = 'generate'): string {
+  const fileTree = getFileTree()
+  const relevantFiles = getRelevantFiles(userMessage)
+  const modeInstructions = SELF_IMPROVE_MODE_INSTRUCTIONS[mode] ?? SELF_IMPROVE_MODE_INSTRUCTIONS.generate
+
+  let prompt = `${modeInstructions}
 
 ## Project Structure
 \`\`\`
@@ -155,13 +213,12 @@ ${fileTree}
     prompt += `\n### ${file.path}\n\`\`\`typescript\n${file.content}\n\`\`\`\n`
   }
 
-  prompt += `\n## Instructions
-You are a coding agent. The user's message below is a request to change the app.
-
-1. PLAN: First, explain your approach - what files need to change and why.
-2. BUILD: Then output the edits block with the complete file contents.
-
-For each file that needs to be created or modified, output the full file content inside an edits JSON block at the end of your response. Use this exact format:
+  if (mode === 'review') {
+    prompt += `\n## Instructions\nReview the files above and produce a structured report. Only include an <edits> block if explicitly asked to fix issues.\n`
+  } else {
+    prompt += `\n## Instructions
+1. PLAN — explain what files need to change and why.
+2. BUILD — output the complete updated file contents in an edits block at the END of your response.
 
 <edits>
 [
@@ -170,14 +227,11 @@ For each file that needs to be created or modified, output the full file content
 ]
 </edits>
 
-Rules:
-- Always include the edits block at the END of your response, after your explanation.
-- The edits block must be valid JSON and contain the COMPLETE file content for each file (not a diff).
-- Use relative paths from the project root.
-- For new files, include the full content. For existing files, include the full updated content.
-- When modifying code, preserve existing imports and code style conventions.
-- After the edits are applied, summarize what was changed.
+- edits block must be valid JSON with COMPLETE file content (no diffs)
+- Use relative paths from the project root
+- Preserve existing imports and code style conventions
 `
+  }
 
   return prompt
 }

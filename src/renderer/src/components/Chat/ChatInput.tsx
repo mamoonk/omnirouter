@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Square, Code2, Brain, Paperclip, X } from 'lucide-react'
-import type { Attachment } from '@shared/types'
+import { Send, Square, Code2, Brain, Paperclip, X, Wand2, Search, GitBranch, BookOpen } from 'lucide-react'
+import type { AgentMode, Attachment } from '@shared/types'
 
 interface Props {
   onSend: (content: string, attachments?: Attachment[]) => void
@@ -11,11 +11,21 @@ interface Props {
   debate: boolean
   onToggleDebate: () => void
   placeholder?: string
+  /** When set, renders the mode pill selector (code agent context only) */
+  agentMode?: AgentMode
+  onAgentModeChange?: (mode: AgentMode) => void
 }
+
+const MODES: Array<{ id: AgentMode; label: string; icon: typeof Wand2; title: string }> = [
+  { id: 'generate', label: 'Generate', icon: Wand2,    title: 'Generate or extend code from a description' },
+  { id: 'review',   label: 'Review',   icon: Search,   title: 'Review code for bugs, security, and quality' },
+  { id: 'refactor', label: 'Refactor', icon: GitBranch, title: 'Improve structure without changing behaviour' },
+  { id: 'document', label: 'Document', icon: BookOpen,  title: 'Add JSDoc, comments, and README content' },
+]
 
 const MIME_PATTERN = /^(image|video|audio)\//
 
-export function ChatInput({ onSend, onStop, streaming, selfImprove, onToggleSelfImprove, debate, onToggleDebate, placeholder }: Props) {
+export function ChatInput({ onSend, onStop, streaming, selfImprove, onToggleSelfImprove, debate, onToggleDebate, placeholder, agentMode, onAgentModeChange }: Props) {
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
@@ -66,11 +76,50 @@ export function ChatInput({ onSend, onStop, streaming, selfImprove, onToggleSelf
     }
   }
 
+  const modePlaceholders: Record<AgentMode, string> = {
+    generate: 'Describe what you want to build or change…',
+    review:   'Which files or features should I review?',
+    refactor: 'What should I clean up or restructure?',
+    document: 'Which files or exports should I document?',
+  }
+
+  const effectivePlaceholder = placeholder ?? (
+    agentMode ? modePlaceholders[agentMode] :
+    debate ? 'Ask multiple models to debate...' :
+    selfImprove ? 'Ask me to modify the app...' :
+    'Send a message...'
+  )
+
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
+      <div className="max-w-4xl mx-auto space-y-2">
+        {/* Mode pills — only shown in code agent context */}
+        {agentMode && onAgentModeChange && (
+          <div className="flex items-center gap-1">
+            {MODES.map((m) => {
+              const Icon = m.icon
+              const active = agentMode === m.id
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => onAgentModeChange(m.id)}
+                  title={m.title}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    active
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Icon size={12} />
+                  {m.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
+          <div className="flex flex-wrap gap-2">
             {attachments.map((a) => (
               <div key={a.id} className="relative group rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800">
                 {a.type === 'image' ? (
@@ -88,29 +137,35 @@ export function ChatInput({ onSend, onStop, streaming, selfImprove, onToggleSelf
             ))}
           </div>
         )}
+
         <div className="flex items-end gap-1">
-          <button
-            onClick={onToggleSelfImprove}
-            className={`shrink-0 rounded-xl p-3 transition-colors ${
-              selfImprove
-                ? 'bg-purple-500 text-white hover:bg-purple-600'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-            title={selfImprove ? 'Self-improvement mode ON' : 'Self-improvement mode OFF'}
-          >
-            <Code2 size={18} />
-          </button>
-          <button
-            onClick={onToggleDebate}
-            className={`shrink-0 rounded-xl p-3 transition-colors ${
-              debate
-                ? 'bg-amber-500 text-white hover:bg-amber-600'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-            title={debate ? 'Debate mode ON' : 'Debate mode OFF'}
-          >
-            <Brain size={18} />
-          </button>
+          {/* Hide self-improve / debate toggles when in code-agent mode (always active there) */}
+          {!agentMode && (
+            <>
+              <button
+                onClick={onToggleSelfImprove}
+                className={`shrink-0 rounded-xl p-3 transition-colors ${
+                  selfImprove
+                    ? 'bg-purple-500 text-white hover:bg-purple-600'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+                title={selfImprove ? 'Self-improvement mode ON' : 'Self-improvement mode OFF'}
+              >
+                <Code2 size={18} />
+              </button>
+              <button
+                onClick={onToggleDebate}
+                className={`shrink-0 rounded-xl p-3 transition-colors ${
+                  debate
+                    ? 'bg-amber-500 text-white hover:bg-amber-600'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+                title={debate ? 'Debate mode ON' : 'Debate mode OFF'}
+              >
+                <Brain size={18} />
+              </button>
+            </>
+          )}
           <button
             onClick={() => fileRef.current?.click()}
             className="shrink-0 rounded-xl p-3 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -131,7 +186,7 @@ export function ChatInput({ onSend, onStop, streaming, selfImprove, onToggleSelf
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder ?? (debate ? 'Ask multiple models to debate...' : selfImprove ? 'Ask me to modify the app...' : 'Send a message...')}
+            placeholder={effectivePlaceholder}
             rows={1}
             className="flex-1 resize-none rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-100"
           />

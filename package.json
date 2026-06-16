@@ -3,13 +3,19 @@
   "productName": "Omni-Router",
   "version": "1.0.0",
   "description": "Multi-provider AI chat router with smart quota management",
+  "author": "Omni-Router <omni-router@example.com>",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "clean": "node -e \"require('fs').rmSync('release', {recursive:true, force:true})\"",
+    "dist": "npm run clean && npm run build && electron-builder",
+    "dist:win": "npm run clean && npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.20",

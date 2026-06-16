@@ -60,18 +60,23 @@ export function LiveStatus({ steps }: Props) {
   }, [active, tick])
 
   return (
-    <div className="flex items-center gap-2 py-0.5" aria-live="polite">
-      <Sparkles size={14} className="text-blue-500 animate-pulse shrink-0" />
-      <span className="status-shimmer text-sm font-medium">{message}</span>
-      <span className="flex items-center gap-0.5">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
-            style={{ animationDelay: `${i * 160}ms` }}
-          />
-        ))}
-      </span>
+    <div className="flex flex-col gap-1 py-0.5" aria-live="polite">
+      <div className="flex items-center gap-2">
+        <Sparkles size={14} className="text-blue-500 animate-pulse shrink-0" />
+        <span className="status-shimmer text-sm font-medium">{message}</span>
+        <span className="flex items-center gap-0.5 ml-1">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
+              style={{ animationDelay: `${i * 160}ms` }}
+            />
+          ))}
+        </span>
+      </div>
+      {active?.detail && (
+        <span className="text-xs text-gray-400 dark:text-gray-500 pl-5 truncate">{active.detail}</span>
+      )}
     </div>
   )
 }

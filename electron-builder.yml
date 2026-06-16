@@ -1,0 +1,42 @@
+appId: com.omnirouter.app
+productName: Omni-Router
+copyright: Copyright © 2026
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+extraMetadata:
+  main: ./out/main/index.js
+# Rebuild native modules (better-sqlite3) against Electron's Node ABI
+npmRebuild: true
+# Unpack the native .node binary from the asar so it can be loaded at runtime
+asarUnpack:
+  - node_modules/better-sqlite3/**/*
+  - node_modules/bindings/**/*
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+nsis:
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Omni-Router
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64

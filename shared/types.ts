@@ -18,7 +18,14 @@ export interface ModelDef {
   displayName: string
   contextWindow: number
   strengths: Array<'factual' | 'code' | 'long_doc' | 'creative'>
-  capabilities?: Array<'text' | 'image' | 'vision'>
+  /**
+   * Technical capabilities beyond text generation:
+   * - tool_use: supports function/tool calling (required for agentic coding tasks)
+   * - vision: can process image inputs
+   * - image: can generate images (output)
+   * - reasoning: extended chain-of-thought reasoning mode
+   */
+  capabilities?: Array<'text' | 'image' | 'vision' | 'tool_use' | 'reasoning'>
 }
 
 export interface CompletionRequest {
@@ -126,6 +133,7 @@ export interface ScoringFactors {
 
 export type IntentCategory = 'factual' | 'code' | 'long_doc' | 'creative' | 'image'
 export type RoutingStrategy = 'smart' | 'cheapest' | 'fastest' | 'roundrobin'
+export type AgentMode = 'generate' | 'review' | 'refactor' | 'document'
 
 export interface RouterScore {
   provider: string

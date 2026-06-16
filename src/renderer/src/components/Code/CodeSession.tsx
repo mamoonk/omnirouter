@@ -56,6 +56,9 @@ export function CodeSession({
     streaming,
     error,
     editResults,
+    lintResults,
+    agentMode,
+    changeAgentMode,
     sendMessage,
     stopStreaming,
     loadMessages,
@@ -85,6 +88,9 @@ export function CodeSession({
     if (!editResults?.applied?.length) return
     const paths = editResults.applied.map(r => r.path)
     setRecentlyWritten(paths)
+    // Auto-open the last written file in the editor pane
+    const lastAbs = absPath(paths[paths.length - 1])
+    setOpenFilePath(lastAbs)
     const t = setTimeout(() => setRecentlyWritten([]), 4000)
     return () => clearTimeout(t)
   }, [editResults])
@@ -116,7 +122,7 @@ export function CodeSession({
         </button>
       </div>
 
-      {/* Body: file tree | file editor | chat */}
+      {/* Body: file tree | [editor (top) / chat (bottom)] */}
       <div className="flex flex-1 overflow-hidden">
         {!treeCollapsed && (
           <div className="w-52 shrink-0 border-r border-gray-200 dark:border-gray-800 overflow-y-auto bg-gray-50 dark:bg-gray-900/40">
@@ -129,51 +135,72 @@ export function CodeSession({
           </div>
         )}
 
-        {openFilePath && (
-          <div className="w-[45%] shrink-0 border-r border-gray-200 dark:border-gray-800 overflow-hidden">
-            <FileEditor
-              filePath={openFilePath}
-              projectRoot={projectPath}
-              onClose={() => setOpenFilePath(null)}
-              onSaved={refreshTree}
-            />
-          </div>
-        )}
-
+        {/* Vertical split: editor on top, chat on bottom */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-            {messages.length === 0 && (
-              <div className="flex items-center justify-center h-full text-center">
-                <div>
-                  <p className="text-lg font-semibold text-gray-500 dark:text-gray-400 mb-1">{projectName}</p>
-                  <p className="text-sm text-gray-400 dark:text-gray-500">Describe what you want to build or change.</p>
+          {openFilePath && (
+            <div className="h-[50%] shrink-0 border-b border-gray-200 dark:border-gray-800 overflow-hidden">
+              <FileEditor
+                filePath={openFilePath}
+                projectRoot={projectPath}
+                onClose={() => setOpenFilePath(null)}
+                onSaved={refreshTree}
+              />
+            </div>
+          )}
+
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+              {messages.length === 0 && (
+                <div className="flex items-center justify-center h-full text-center">
+                  <div>
+                    <p className="text-lg font-semibold text-gray-500 dark:text-gray-400 mb-1">{projectName}</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">Describe what you want to build or change.</p>
+                  </div>
                 </div>
+              )}
+              {messages.map((msg, i) => (
+                <MessageBubble
+                  key={msg.id || i}
+                  message={msg}
+                  debateData={null}
+                  editResults={i === messages.length - 1 ? editResults : null}
+                  live={i === messages.length - 1 && streaming}
+                />
+              ))}
+              {error && (
+                <div className="text-red-500 text-sm px-4 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg">{error}</div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+            {lintResults && lintResults.errors.length > 0 && (
+              <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-red-700 dark:text-red-400">
+                    {lintResults.errors.length} type error{lintResults.errors.length !== 1 ? 's' : ''} after last edit
+                  </span>
+                  <button
+                    onClick={() => sendMessage(`The TypeScript compiler found these errors after the last edit. Please fix all of them:\n\n\`\`\`\n${lintResults.raw}\n\`\`\``)}
+                    disabled={streaming}
+                    className="shrink-0 px-2 py-0.5 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 transition-colors"
+                  >
+                    Ask agent to fix
+                  </button>
+                </div>
+                <pre className="mt-1.5 text-red-600 dark:text-red-400 whitespace-pre-wrap break-all max-h-24 overflow-y-auto">{lintResults.errors.slice(0, 5).join('\n')}{lintResults.errors.length > 5 ? `\n… and ${lintResults.errors.length - 5} more` : ''}</pre>
               </div>
             )}
-            {messages.map((msg, i) => (
-              <MessageBubble
-                key={msg.id || i}
-                message={msg}
-                debateData={null}
-                editResults={i === messages.length - 1 ? editResults : null}
-                live={i === messages.length - 1 && streaming}
-              />
-            ))}
-            {error && (
-              <div className="text-red-500 text-sm px-4 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg">{error}</div>
-            )}
-            <div ref={bottomRef} />
+            <ChatInput
+              onSend={sendMessage}
+              onStop={stopStreaming}
+              streaming={streaming}
+              selfImprove={false}
+              onToggleSelfImprove={() => {}}
+              debate={false}
+              onToggleDebate={() => {}}
+              agentMode={agentMode}
+              onAgentModeChange={changeAgentMode}
+            />
           </div>
-          <ChatInput
-            onSend={sendMessage}
-            onStop={stopStreaming}
-            streaming={streaming}
-            selfImprove={false}
-            onToggleSelfImprove={() => {}}
-            debate={false}
-            onToggleDebate={() => {}}
-            placeholder="Describe what you want to build or change…"
-          />
         </div>
       </div>
     </div>
